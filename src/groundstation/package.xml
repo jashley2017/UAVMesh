@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>xbee_uav</name>
+  <name>groundstation</name>
   <version>0.0.1</version>
-  <description>ROS2 node for working with the XBEE radio as a node in a DigiMesh or Zigbee network. This is code that will go on the UAV.</description>
-  <maintainer email="jashley2017@gmail.com">Joshua Ashley</maintainer>
+  <description>Node that runs on the ground station node of the XBee network. This will be where the XBee messages get interpreted.</description>
+  <maintainer email="ubuntu@todo.todo">ubuntu</maintainer>
   <license>Apache 2.0</license>
 
   <test_depend>ament_copyright</test_depend>
@@ -15,7 +15,7 @@
   <export>
     <build_type>ament_python</build_type>
   </export>
-  <exec_depend>rclpy</exec_depend>
-  <exec_depend>std_msgs</exec_depend>
-  <exec_depend>xbee_interfaces</exec_depend>
+  <exec_depend>rclpy</exec_depends>
+  <exec_depend>std_msgs</exec_depends>
+  <exec_depend>xbee_interfaces</exec_depends>
 </package>

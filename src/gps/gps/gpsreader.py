@@ -84,6 +84,7 @@ class GPSReader:
                 ) as err:
                     print(f"Something went wrong {err}")
                     return False
+        return False
 
     '''
     def start_read_thread(self):
@@ -230,6 +231,7 @@ if __name__ == "__main__":
         ubp.config_msg(ON)
         while True:
             # if timepulse.value:
-            print(ubp.read())
+            nav_msg = ubp.read()
+            print(nav_msg)
             print(timepulse.value)
             sleep(0.5)

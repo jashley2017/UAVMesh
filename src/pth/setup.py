@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-		'pth_node = pth.dummy:main',
+		'pth_dummy = pth.dummy:main',
+		'pth_timeref = pth.pth_timeref:main',
         ],
     },
 )

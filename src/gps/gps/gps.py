@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String
+from std_msgs.msg import Header
+from sensor_msgs.msg import NavSatFix, NavSatStatus, TimeReference
 import RPi.GPIO as GPIO
 from pyubx2 import UBX_MSGIDS
 
@@ -9,6 +10,11 @@ if __name__ == '__main__':
     from gpsreader import GPSReader
 else:
     from .gpsreader import GPSReader
+
+SERVICE_GPS = 1
+SERVICE_GLONASS = 2 
+SERVICE_COMPASS = 4
+SERVICE_GALILEO = 8
 
 class Gps(Node):
     ON = b"\x00\x01\x01\x01\x00\x00"
@@ -34,8 +40,11 @@ class Gps(Node):
         self.ubp.config_msg(self.ON)
         # setup the ROS
         self.declare_parameter('gps_top', 'gps')
+        self.declare_parameter('time_top', 'gps_time')
         pub_top = self.get_parameter('gps_top').value
-        self.publisher_ = self.create_publisher(String, pub_top, 10)
+        time_top = self.get_parameter('time_top').value
+        self.fix_pub = self.create_publisher(NavSatFix, pub_top, 10)
+        self.time_pub = self.create_publisher(TimeReference, time_top, 10)
         # setup the gpio
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(26, GPIO.IN, GPIO.PUD_UP)
@@ -43,7 +52,12 @@ class Gps(Node):
             callback=self.timepulse_callback, bouncetime=50)
 
     def timepulse_callback(self, channel):
-        gps_msg = String()
+        gps_msg = NavSatFix()
+        timeref_msg = TimeReference()
+        ref_time = self.get_clock().now().to_msg()
+        msg_hdr = Header()
+        msg_hdr.stamp = ref_time
+        msg_hdr.frame_id = 'base_link' # center of the plane
         try:
             ubx = self.ubp.read()
         except IOError:
@@ -56,9 +70,29 @@ class Gps(Node):
         pubbed = False
         while ubx and not pubbed:
             if (ubx.msg_cls + ubx.msg_id) == b"\x01\x07": # NAV_PVT
-                gps_msg.data = str(ubx)
-                self.publisher_.publish(gps_msg)
-                self.get_logger().info(f"Publishing gps message: {gps_msg.data}")
+                # <UBX(NAV-PVT, iTOW=16:50:32, year=2015, month=10, day=25, hour=16, min=50, second=48, valid=b'\xf0', tAcc=4294967295, nano=0, fixType=0, flags=b'\x00', flags2=b'$', numSV=0, lon=0, lat=0, height=0, hMSL=-17000, hAcc=4294967295, vAcc=4294967295, velN=0, velE=0, velD=0, gSpeed=0, headMot=0, sAcc=20000, headAcc=18000000, pDOP=9999, reserved1=65034815406080, headVeh=0, magDec=0, magAcc=0)>
+                fix_stat = NavSatStatus()
+                if ubx.fixType == 0:
+                    fix_stat.status = -1
+                else:
+                    fix_stat.status = 0
+                fix_stat.service = SERVICE_GPS
+
+                gps_msg.status = fix_stat
+                gps_msg.header = msg_hdr
+                gps_msg.latitude = float(ubx.lat)
+                gps_msg.longitude = float(ubx.lon)
+                gps_msg.altitude = float(ubx.height)
+
+                utc_str = f"{ubx.year}:{ubx.month}:{ubx.day}:{ubx.min}:{ubx.second}:{ubx.nano}"
+                timeref_msg.header = msg_hdr
+                timeref_msg.time_ref = ref_time
+                timeref_msg.source = utc_str
+
+                self.fix_pub.publish(gps_msg)
+                self.time_pub.publish(timeref_msg)
+
+                self.get_logger().info(f"Publishing gps message: {str(ubx)}")
                 pubbed = True
             ubx = self.ubp.read()
 

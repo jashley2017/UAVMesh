@@ -6,21 +6,22 @@ def generate_launch_description():
         Node(
             package="gps",
             namespace='plane', # TODO index this variably
-            executable="gps_node",
+            executable="neo_gps",
             name="gps",
             parameters=[
                 {"gps_top": 'gps_fix'},
                 {"gps_baud": 9600},
-                {"gps_port": '/dev/ttyS0'},
+                {"gps_port": '/dev/ttyACM0'},
             ]
         ),
         Node(
             package="pth",
             namespace='plane', # TODO index this variably
-            executable="pth_node",
+            executable="pth_timeref",
             name="pth",
             parameters=[
                 {"pth_top": 'transmit'},
+                {"pth_port": '/dev/ttyUSB1'},
             ]
         ),
         Node(

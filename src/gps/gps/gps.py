@@ -19,7 +19,7 @@ SERVICE_GALILEO = 8
 class Gps(Node):
     ON = b"\x00\x01\x01\x01\x00\x00"
     OFF = b"\x00\x00\x00\x00\x00\x00"
-    PORT = "/dev/ttyS0"
+    PORT = "/dev/ttyACM0"
     BAUDRATE = 9600
     TIMEOUT = 1
     UBXONLY = False
@@ -84,7 +84,7 @@ class Gps(Node):
                 gps_msg.longitude = float(ubx.lon)
                 gps_msg.altitude = float(ubx.height)
 
-                utc_str = f"{ubx.year}:{ubx.month}:{ubx.day}:{ubx.min}:{ubx.second}:{ubx.nano}"
+                utc_str = f"{ubx.year}:{ubx.month}:{ubx.day}:{ubx.hour}:{ubx.min}:{ubx.second}:{ubx.nano}"
                 timeref_msg.header = msg_hdr
                 timeref_msg.time_ref = ref_time
                 timeref_msg.source = utc_str

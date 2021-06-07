@@ -13,17 +13,9 @@ colcon build
 source install/setup.bash
 ```
 
-* XBee radio interface node
+* Launch plane sensors
 ```
-ros2 run xbee_radio radio 
-```
-
-* Transmit over XBee
-```
-ros2 topic pub transmit std_msgs/String 'data: "Hello World"'
+ros2 launch plane main.launch.py
 ```
 
-* Listen over XBee 
-```
-ros2 topic echo received
-```
+* Listen on base radio for plane sensor messages

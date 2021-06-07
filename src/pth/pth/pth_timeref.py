@@ -13,7 +13,7 @@ class Pth(Node):
         self.declare_parameter('pth_top', 'pth')
         # defaults to a virtual port initialize by socat
         # socat -d -d pty,raw,echo=0 pty,raw,echo=0
-        self.declare_parameter('pth_port', '/dev/pts/2')
+        self.declare_parameter('pth_port', '/dev/ttyUSB1')
         self.declare_parameter('pth_baud', 9600)
         self.declare_parameter('time_topic', 'gps_time')
         pub_top = self.get_parameter('pth_top').value
@@ -45,6 +45,8 @@ class Pth(Node):
         # timestamp = self.gps_ts + (self.rel_ts - time.time())
         while rclpy.ok() and self.running:
             pth = ser.readline().decode()
+            if '\x00' in pth:
+                continue
             pth_time = time.time()
             pth_ts_str = self.gps_ts.split(":")
             year = int(pth_ts_str[0])
@@ -54,12 +56,16 @@ class Pth(Node):
             minute = int(pth_ts_str[4])
             second = int(pth_ts_str[5])
             usecond = int(int(pth_ts_str[6])/1000)
+            if usecond < 0:
+                usecond = 1000000 + usecond
+                second -= 1
             utc = datetime.datetime(year, month, day, hour, minute, second, usecond)
             dt = pth_time - self.rel_ts
             ts = utc.timestamp() + dt
             adj_utc = datetime.datetime.fromtimestamp(ts)
             msg = String()
-            msg.data = f"{adj_utc.strftime('%Y:%m:%d:%H:%M:%S:%f')}/{pth}"
+            msg.data = f"{adj_utc.strftime('%Y%m%d%H%M%S%f')}/{pth[12:-5]}"   
+            # msg.data = f"{pth[:-2]}"
             self.publisher_.publish(msg)
             self.get_logger().info(f"Publishing pth: {msg.data}")
 

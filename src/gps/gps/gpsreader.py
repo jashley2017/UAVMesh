@@ -217,7 +217,7 @@ if __name__ == "__main__":
     timepulse = digitalio.DigitalInOut(board.D26)
     timepulse.direction = digitalio.Direction.INPUT 
 
-    PORT = "/dev/ttyS0"
+    PORT = "/dev/ttyACM0"
     BAUDRATE = 9600
     TIMEOUT = 1
     UBXONLY = False

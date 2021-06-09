@@ -11,7 +11,7 @@ def generate_launch_description():
             parameters=[
                 {"gps_top": 'gps_fix'},
                 {"gps_baud": 9600},
-                {"gps_port": '/dev/ttyACM0'},
+                {"gps_port": '/dev/gps'},
             ]
         ),
         Node(
@@ -20,14 +20,31 @@ def generate_launch_description():
             executable="pth_timeref",
             name="pth",
             parameters=[
-                {"pth_top": 'transmit'},
-                {"pth_port": '/dev/ttyUSB1'},
+                {"pth_top": 'pth_msg'},
+                {"pth_port": '/dev/pth'},
             ]
         ),
         Node(
             package='xbee_uav',
             namespace='plane', # TODO index this variably
             executable='radio',
-            name='xbee_radio')
+            name='xbee_radio',
+            parameters=[
+                {"xbee_port": '/dev/xbee'},
+                {"xbee_baud": 9600},
+
+            ]
+        ),
+        Node(
+            package='plane',
+            namespace='plane', # TODO: index this variably
+            executable='transmitter',
+            name='msg_transmitter',
+            parameters=[
+                {'pth_top': 'pth_msg'},
+                {'gps_top': 'gps_fix'},
+                {"gcu_addr": "13A20041D17945"}
+            ]
+        ),
     ])
     return ld

@@ -1,3 +1,4 @@
+import datetime
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Header
@@ -54,9 +55,8 @@ class Gps(Node):
     def timepulse_callback(self, channel):
         gps_msg = NavSatFix()
         timeref_msg = TimeReference()
-        ref_time = self.get_clock().now().to_msg()
+        system_time = self.get_clock().now().to_msg()
         msg_hdr = Header()
-        msg_hdr.stamp = ref_time
         msg_hdr.frame_id = 'base_link' # center of the plane
         try:
             ubx = self.ubp.read()
@@ -71,6 +71,9 @@ class Gps(Node):
         while ubx and not pubbed:
             if (ubx.msg_cls + ubx.msg_id) == b"\x01\x07": # NAV_PVT
                 # <UBX(NAV-PVT, iTOW=16:50:32, year=2015, month=10, day=25, hour=16, min=50, second=48, valid=b'\xf0', tAcc=4294967295, nano=0, fixType=0, flags=b'\x00', flags2=b'$', numSV=0, lon=0, lat=0, height=0, hMSL=-17000, hAcc=4294967295, vAcc=4294967295, velN=0, velE=0, velD=0, gSpeed=0, headMot=0, sAcc=20000, headAcc=18000000, pDOP=9999, reserved1=65034815406080, headVeh=0, magDec=0, magAcc=0)>
+
+                msg_hdr.stamp = self._gen_timestamp_from_utc(ubx)
+
                 fix_stat = NavSatStatus()
                 if ubx.fixType == 0:
                     fix_stat.status = -1
@@ -84,10 +87,9 @@ class Gps(Node):
                 gps_msg.longitude = float(ubx.lon)
                 gps_msg.altitude = float(ubx.height)
 
-                utc_str = f"{ubx.year}:{ubx.month}:{ubx.day}:{ubx.hour}:{ubx.min}:{ubx.second}:{ubx.nano}"
                 timeref_msg.header = msg_hdr
-                timeref_msg.time_ref = ref_time
-                timeref_msg.source = utc_str
+                timeref_msg.time_ref = system_time
+                timeref_msg.source = "GPS"
 
                 self.fix_pub.publish(gps_msg)
                 self.time_pub.publish(timeref_msg)
@@ -95,6 +97,19 @@ class Gps(Node):
                 self.get_logger().info(f"Publishing gps message: {str(ubx)}")
                 pubbed = True
             ubx = self.ubp.read()
+
+    def _gen_timestamp_from_utc(self, ubx):
+        second = ubx.second
+        usecond = ubx.nano/1000
+        if usecond < 0:
+            usecond = 1000000 + usecond
+            second -= 1
+        utc = datetime.datetime(ubx.year, ubx.month, ubx.day, ubx.hour, ubx.min, second, int(usecond))
+        gps_time = utc.timestamp()
+        gps_stamp = self.get_clock().now().to_msg()
+        gps_stamp.sec = int(gps_time)
+        gps_stamp.nanosec = int((gps_time - int(gps_time))*1000000000)
+        return gps_stamp
 
 def main(args=None):
     rclpy.init(args=args)

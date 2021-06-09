@@ -13,7 +13,7 @@ class Pth(Node):
         self.declare_parameter('pth_top', 'pth')
         # defaults to a virtual port initialize by socat
         # socat -d -d pty,raw,echo=0 pty,raw,echo=0
-        self.declare_parameter('pth_port', '/dev/ttyUSB1')
+        self.declare_parameter('pth_port', '/dev/pts/2')
         self.declare_parameter('pth_baud', 9600)
         self.declare_parameter('time_topic', 'gps_time')
         pub_top = self.get_parameter('pth_top').value
@@ -26,7 +26,7 @@ class Pth(Node):
            self.timestamp_creator,
            1)
         self.rel_ts = time.time()
-        self.gps_ts = datetime.datetime.now().strftime("%Y:%m:%d:%H:%M:%S:%f")
+        self.gps_ts = time.time()
         self.read_thread = threading.Thread(target=self.pth_callback, args=(serial_port,))
         self.running = True
         self.read_thread.start()
@@ -36,10 +36,11 @@ class Pth(Node):
         self.read_thread.join()
 
     def timestamp_creator(self, time_msg):
-        self.rel_ts = float(f"{time_msg.time_ref.sec}.{time_msg.time_ref.nanosec}")
-        # assuming source is string message of the UTC time as such:
-        # yyyy:MM:dd:hh:mm:ss:nnnnnnnnn
-        self.gps_ts = time_msg.source
+        # TODO: this is probably backwards from what it should be, but it lines up with NavSatFix
+        # the time_ref holds the system time 
+        self.rel_ts = time_msg.time_ref.sec + time_msg.time_ref.nanosec / 1000000000
+        # the header hold the timestamp to the UTC value from the GPS
+        self.gps_ts = time_msg.header.stamp.sec + time_msg.header.stamp.nanosec / 1000000000
 
     def pth_callback(self, ser):
         # timestamp = self.gps_ts + (self.rel_ts - time.time())
@@ -48,20 +49,8 @@ class Pth(Node):
             if '\x00' in pth:
                 continue
             pth_time = time.time()
-            pth_ts_str = self.gps_ts.split(":")
-            year = int(pth_ts_str[0])
-            month = int(pth_ts_str[1])
-            day = int(pth_ts_str[2])
-            hour = int(pth_ts_str[3])
-            minute = int(pth_ts_str[4])
-            second = int(pth_ts_str[5])
-            usecond = int(int(pth_ts_str[6])/1000)
-            if usecond < 0:
-                usecond = 1000000 + usecond
-                second -= 1
-            utc = datetime.datetime(year, month, day, hour, minute, second, usecond)
             dt = pth_time - self.rel_ts
-            ts = utc.timestamp() + dt
+            ts = self.gps_ts + dt
             adj_utc = datetime.datetime.fromtimestamp(ts)
             msg = String()
             msg.data = f"{adj_utc.strftime('%Y%m%d%H%M%S%f')}/{pth[12:-5]}"   

@@ -20,4 +20,7 @@
   <exec_depend>gps</exec_depend>
   <exec_depend>pth</exec_depend>
   <exec_depend>xbee_uav</exec_depend>
+  <exec_depend>xbee_interfaces</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
 </package>

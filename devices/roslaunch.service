@@ -4,14 +4,14 @@ Description="A ros2 launch service for the groundstation."
 [Service]
 User=ubuntu
 Environment="ROS_DOMAIN_ID=42"
-Environment="LD_LIBRARY_PATH=LD_LIBRARY_PATH=/home/ubuntu/uavmesh/install/xbee_interfaces/lib:/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib"
+Environment="LD_LIBRARY_PATH=/home/ubuntu/uavmesh/install/xbee_interfaces/lib:/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib"
 Environment="PYTHONPATH=/home/ubuntu/uavmesh/install/plane/lib/python3.8/site-packages:/home/ubuntu/uavmesh/install/xbee_uav/lib/python3.8/site-packages:/home/ubuntu/uavmesh/install/gsu/lib/python3.8/site-packages:/home/ubuntu/uavmesh/install/xbee_interfaces/lib/python3.8/site-packages:/home/ubuntu/uavmesh/install/pth/lib/python3.8/site-packages:/home/ubuntu/uavmesh/install/gps/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages"
 Environment="AMENT_PREFIX_PATH=/home/ubuntu/uavmesh/install/plane:/home/ubuntu/uavmesh/install/xbee_uav:/home/ubuntu/uavmesh/install/gsu:/home/ubuntu/uavmesh/install/xbee_interfaces:/home/ubuntu/uavmesh/install/pth:/home/ubuntu/uavmesh/install/gps:/opt/ros/foxy"
 
 # for gsu
-ExecStart=/opt/ros/foxy/bin/ros2 launch --debug gsu tsdb.launch.py
+ExecStart=/bin/bash -c 'source /opt/ros/foxy/setup.bash; source /home/ubuntu/uavmesh/install/setup.bash;/opt/ros/foxy/bin/ros2 launch gsu tsdb.launch.py; sleep 60'
 # for plane
-# ExecStart=/opt/ros/foxy/bin/ros2 launch --debug plane main.launch.py
+# ExecStart=/bin/bash -c 'source /opt/ros/foxy/setup.bash; source /home/ubuntu/uavmesh/install/setup.bash;/opt/ros/foxy/bin/ros2 launch plane main.launch.py; sleep 60'
 Restart=on-failure
 
 [Install]

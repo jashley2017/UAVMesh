@@ -1,5 +1,6 @@
 import rclpy
 import datetime
+import time
 from rclpy.node import Node
 
 from xbee_interfaces.msg import Packet
@@ -13,7 +14,7 @@ class GroundStation(Node):
                 'received',
                 self.rx_callback,
                 10)
-        self.declare_parameter('outfile', '~/outfile.log')
+        self.declare_parameter('outfile', '/home/ubuntu/outfile.log')
 
         self.declare_parameter('time_topic', 'gps_time')
 
@@ -24,6 +25,11 @@ class GroundStation(Node):
         1)
         self.rel_ts = None
         self.gps_ts = None
+        outpath = self.get_parameter('outfile').get_parameter_value().string_value
+        self.outfile = open(outpath, "w+")
+
+    def __del__(self):
+        self.outfile.close()
 
     def timestamp_creator(self, time_msg):
         # the time_ref holds the system time 
@@ -32,14 +38,12 @@ class GroundStation(Node):
         self.gps_ts = time_msg.header.stamp.sec + time_msg.header.stamp.nanosec / 1000000000
 
     def rx_callback(self, msg):
+        adj_utc = datetime.datetime.now()
         if self.rel_ts:
             dt = time.time() - self.rel_ts
             ts = self.gps_ts + dt
             adj_utc = datetime.datetime.fromtimestamp(ts)
-        outfile = self.get_parameter('outfile').get_parameter_value().string_value
-        self.get_logger().info(f"Writing to: {outfile}")
-        with open(outfile, "w") as out: 
-            out.write(f"({adj_utc.strftime('%Y:%m:%d:%H:%M:%S:%f')}, {msg.dev_addr}): {msg.data}")
+        self.outfile.write(f"({adj_utc.strftime('%Y:%m:%d:%H:%M:%S:%f')}, {msg.dev_addr}): {msg.data}\n")
 
 def main(args=None):
     rclpy.init(args=args)

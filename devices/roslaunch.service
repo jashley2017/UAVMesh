@@ -9,7 +9,7 @@ Environment="PYTHONPATH=/home/ubuntu/uavmesh/install/plane/lib/python3.8/site-pa
 Environment="AMENT_PREFIX_PATH=/home/ubuntu/uavmesh/install/plane:/home/ubuntu/uavmesh/install/xbee_uav:/home/ubuntu/uavmesh/install/gsu:/home/ubuntu/uavmesh/install/xbee_interfaces:/home/ubuntu/uavmesh/install/pth:/home/ubuntu/uavmesh/install/gps:/opt/ros/foxy"
 
 # for gsu
-ExecStart=/opt/ros/foxy/bin/ros2 launch --debug gsu logger.launch.py
+ExecStart=/opt/ros/foxy/bin/ros2 launch --debug gsu tsdb.launch.py
 # for plane
 # ExecStart=/opt/ros/foxy/bin/ros2 launch --debug plane main.launch.py
 Restart=on-failure

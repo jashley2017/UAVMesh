@@ -23,7 +23,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'logger = gsu.run:main'
+            'logger = gsu.run:main',
+            'tsdb = gsu.tsdb:main'
         ],
     },
 )

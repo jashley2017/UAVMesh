@@ -28,11 +28,10 @@ def generate_launch_description():
         Node(
             package="gsu",
             namespace="gsu",
-            executable="logger",
+            executable="tsdb",
             name="gsu",
             parameters=[
                 {'time_topic': "gps_time"},
-                {'outfile': "/home/ubuntu/outfile.log"},
             ]
         ),
     ])

@@ -48,7 +48,6 @@ class GroundStation(Node):
         if self.rel_ts:
             dt = time.time() - self.rel_ts
             ts = self.gps_ts + dt
-            adj_utc = datetime.datetime.fromtimestamp(ts)
         pth_match = re.match(pth_reg, msg.data)
         gps_match = re.match(gps_reg, msg.data)
         samples = []
@@ -111,7 +110,7 @@ class GroundStation(Node):
                             }
                         }
                 )
-        self.client.write_points(samples)
+        self.client.write_points(samples, time_precision='ms')
 
 def main(args=None):
     rclpy.init(args=args)

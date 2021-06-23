@@ -1,5 +1,6 @@
 from influxdb import InfluxDBClient
 import rclpy
+import struct
 import datetime
 import time
 import re
@@ -34,46 +35,50 @@ class GroundStation(Node):
         host = 'localhost'
         port = 8086
         self.client = InfluxDBClient(host, port, user, password, dbname)
+        self.gps_code = b'1'
+        self.pth_code = b'2'
+        self.lock = False
 
     def timestamp_creator(self, time_msg):
+        self.lock = True
         # the time_ref holds the system time 
-        self.rel_ts = time_msg.time_ref.sec + time_msg.time_ref.nanosec / 1000000000
+        self.rel_ts = float(time_msg.time_ref.sec) + float(time_msg.time_ref.nanosec) / 1000000000
         # the header hold the timestamp to the UTC value from the GPS
-        self.gps_ts = time_msg.header.stamp.sec + time_msg.header.stamp.nanosec / 1000000000
+        self.gps_ts = float(time_msg.header.stamp.sec) + float(time_msg.header.stamp.nanosec) / 1000000000
+        self.lock = False
+
+    def _unpack_bytelist(self, var, bytesize=4, vartype='f'):
+        # unpacks a float from bytes[]
+        return struct.unpack(vartype, struct.pack(str(bytesize) + 'c', *var))[0]
 
     def rx_callback(self, msg):
-        ts = time.time()
-        pth_reg = r"(?P<timestamp>\d+)\/(?P<pressure_val>\d*\.?\d*),(?P<pressure_unit>[A-Za-z]+),(?P<temp1_val>\d*\.?\d*),(?P<temp1_unit>[A-Za-z]+),(?P<temp2_val>\d*\.?\d*),(?P<temp2_unit>[A-Za-z]+),(?P<hum_val>\d*\.?\d*),(?P<hum_unit>[^0-9,]*),(?P<temp3_val>\d*\.?\d*),(?P<temp3_unit>[A-Za-z]+)"
-        gps_reg = r"(?P<timestamp>\d+)\/(?P<lat>\d*\.?\d*),(?P<lon>-?\d*\.?\d*),(?P<alt>-?\d*\.?\d*)"
+        while self.lock:
+            time.sleep(0.05)
         if self.rel_ts:
             dt = time.time() - self.rel_ts
             ts = self.gps_ts + dt
-        pth_match = re.match(pth_reg, msg.data)
-        gps_match = re.match(gps_reg, msg.data)
+        else:
+            return
         samples = []
-        if pth_match or gps_match:
-            if pth_match:
-                match_dict = pth_match.groupdict()
-            else:
-                match_dict = gps_match.groupdict()
-            timestr = match_dict['timestamp']
-            timeobj = datetime.datetime.strptime(timestr, '%Y%m%d%H%M%S%f')
-            msg_stamp = datetime.datetime.timestamp(timeobj)
+        if msg.data[0] == self.gps_code or msg.data[0] == self.pth_code:
+            msg_stamp = self._unpack_bytelist(msg.data[1:9], bytesize=8, vartype='d')
+            self.get_logger().info(f"current timestamps: GPS:{self.gps_ts} + {dt}\nREL:{self.rel_ts}\nMSG:{msg_stamp}")
             roundtrip_time = ts - msg_stamp
-            samples = [
-                    {
-                        "measurement": "time_lag", 
-                        "tags": {
-                            "host": "groundstation",
-                            "region": "us-east"
-                            },
-                        "time": int(ts*1000), # ms precision 
-                        "fields": {
-                            "Time_Difference": roundtrip_time
-                            }
-                    }
-            ]
-            if pth_match:
+            if roundtrip_time > 0:
+                samples = [
+                        {
+                            "measurement": "time_lag", 
+                            "tags": {
+                                "host": "groundstation",
+                                "region": "us-east"
+                                },
+                            "time": int(ts*1000), # ms precision 
+                            "fields": {
+                                "Time_Difference": roundtrip_time,
+                                }
+                        }
+                ]
+            if msg.data[0] == self.pth_code:
                 samples.append(
                         {
                             "measurement": "pth",
@@ -85,11 +90,12 @@ class GroundStation(Node):
                             "fields": {
                                 # TODO: units
                                 "PlaneID": msg.dev_addr,
-                                "Temperature1": match_dict['temp1_val'],
-                                "Temperature2": match_dict['temp2_val'],
-                                "Temperature3": match_dict['temp3_val'],
-                                "Pressure": match_dict['pressure_val'],
-                                "Humidity": match_dict['hum_val']
+                                "Serial": struct.unpack('i', struct.pack('4c', *msg.data[9:11], b'\x00', b'\x00'))[0],
+                                "Temperature1": self._unpack_bytelist(msg.data[11:15]),
+                                "Temperature2": self._unpack_bytelist(msg.data[15:19]),
+                                "Temperature3": self._unpack_bytelist(msg.data[19:23]),
+                                "Pressure": self._unpack_bytelist(msg.data[23:27]), 
+                                "Humidity": self._unpack_bytelist(msg.data[27:31])
                             }
                         }
                 )
@@ -104,9 +110,9 @@ class GroundStation(Node):
                             "time": int(msg_stamp*1000),
                             "fields": {
                                 "PlaneID": msg.dev_addr,
-                                "Latitude": match_dict['lat'],
-                                "Longitude": match_dict['lon'],
-                                "Altitude": match_dict['alt'],
+                                "Latitude": self._unpack_bytelist(msg.data[9:13]),
+                                "Longitude": self._unpack_bytelist(msg.data[13:17]),
+                                "Altitude": self._unpack_bytelist(msg.data[17:21])
                             }
                         }
                 )

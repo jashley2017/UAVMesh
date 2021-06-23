@@ -1,7 +1,9 @@
+import struct
+import re
 import datetime
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String
+from environ_msgs.msg import Pth
 from sensor_msgs.msg import NavSatFix
 from xbee_interfaces.msg import Packet
 
@@ -24,28 +26,44 @@ class MsgTransmitter(Node):
                 self.gps_callback,
                 1)
         self._pth_sub = self.create_subscription(
-                String, 
+                Pth, 
                 pth_top, 
                 self.pth_callback,
                 1)
         self.tx_pub = self.create_publisher(Packet, 'transmit', 10)
+        self.gps_code = b'1'
+        self.pth_code = b'2'
+
+    def _create_bytelist(self, flt):
+        return list(struct.unpack('4c', struct.pack('f', flt)))
+        # TODO: this is the generic, but only float parsing is needed 
+        # return list(struct.unpack(str(len(struct.pack('f', flt))) + c , struct.pack('f', flt)))
 
     def gps_callback(self, msg):
+        msg_data = [self.gps_code]
         ts = msg.header.stamp.sec + msg.header.stamp.nanosec / 1000000000
-        utc = datetime.datetime.fromtimestamp(ts)
-        utc_str = utc.strftime('%Y%m%d%H%M%S%f')
-        lat = msg.latitude
-        lon = msg.longitude
-        alt = msg.altitude
+        msg_data += self._create_bytelist(ts)
+        msg_data += self._create_bytelist(msg.latitude)
+        msg_data += self._create_bytelist(msg.longitude)
+        msg_data += self._create_bytelist(msg.altitude)
         tx_msg = Packet()
-        tx_msg.data = f"{utc_str}/{lat},{lon},{alt}"
+        tx_msg.data = msg_data
         tx_msg.dev_addr = self.gcu_addr
         tx_msg.is_broadcast = False
         self.tx_pub.publish(tx_msg)
 
     def pth_callback(self, msg):
+        msg_data = [self.pth_code]
+        ts = msg.header.stamp.sec + msg.header.stamp.nanosec / 1000000000
+        msg_data += self._create_bytelist(ts)
+        msg_data += list(struct.unpack('4c', struct.pack('i', msg.serial)))[0:2]
+        msg_data += self._create_bytelist(msg.temp1)
+        msg_data += self._create_bytelist(msg.temp2)
+        msg_data += self._create_bytelist(msg.temp3)
+        msg_data += self._create_bytelist(msg.pressure)
+        msg_data += self._create_bytelist(msg.humidity)
         tx_msg = Packet()
-        tx_msg.data = msg.data
+        tx_msg.data = msg_data
         tx_msg.dev_addr = self.gcu_addr
         tx_msg.is_broadcast = False
         self.tx_pub.publish(tx_msg)

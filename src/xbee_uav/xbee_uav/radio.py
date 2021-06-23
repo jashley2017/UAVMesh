@@ -1,3 +1,5 @@
+import struct
+
 import rclpy
 from rclpy.node import Node
 
@@ -32,14 +34,14 @@ class XBeeRadio(Node):
         self._subscription
     
     def tx_callback(self, msg):
-        ''' callback for data wanting to be transmitted by the XBee radio '''
+        ''' ROS: callback for data wanting to be transmitted by the XBee radio '''
         self.get_logger().info(f"Transmitting: {msg.data}")
         remote_device = RemoteXBeeDevice(self.device, XBee64BitAddress.from_hex_string(msg.dev_addr))
-        self.device.send_data(remote_device, msg.data)
+        self.device.send_data(remote_device, bytearray(struct.pack(str(len(msg.data)) + 'c', *msg.data)))
 
     def rx_callback(self, msg):
-        ''' callback for data received by the XBee radio '''
-        data = msg.data.decode("utf8")
+        ''' XBEE: callback for data received by the XBee radio '''
+        data = list(struct.unpack(str(len(msg.data)) + 'c', msg.data))
         dev_addr = str(msg.remote_device.get_64bit_addr())
         self.get_logger().info(f"Received: {data} from {dev_addr} at time: {msg.timestamp}")
         packet = Packet()

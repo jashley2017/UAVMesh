@@ -34,7 +34,8 @@ class MsgTransmitter(Node):
         self.gps_code = b'1'
         self.pth_code = b'2'
 
-    def _create_bytelist(self, var, bytelen=4, vartype='f'):
+    @staticmethod
+    def _create_bytelist(var, bytelen=4, vartype='f'):
         # TODO: can probably autodetect the bytelen for vartype
         return list(struct.unpack(str(bytelen) + 'c', struct.pack(vartype, var)))
 

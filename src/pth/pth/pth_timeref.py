@@ -32,6 +32,11 @@ class PthProbe(Node):
         self.running = True
         self.read_thread.start()
         self.lock = False
+        
+        self.rel_ts1 = None
+        self.rel_ts2 = None
+        self.gps_ts1 = None
+        self.gps_ts2 = None
 
     def __del__(self):
         self.running = False
@@ -41,10 +46,24 @@ class PthProbe(Node):
         # TODO: this is probably backwards from what it should be, but it lines up with NavSatFix
         self.lock = True
         # the time_ref holds the system time 
-        self.rel_ts = float(time_msg.time_ref.sec) + float(time_msg.time_ref.nanosec) / 1000000000
+        self.rel_ts1 = self.rel_ts2
+        self.rel_ts2 = float(time_msg.time_ref.sec) + float(time_msg.time_ref.nanosec) / 1000000000
         # the header hold the timestamp to the UTC value from the GPS
-        self.gps_ts = float(time_msg.header.stamp.sec) + float(time_msg.header.stamp.nanosec) / 1000000000
+        self.gps_ts1 = self.gps_ts2
+        self.gps_ts2 = float(time_msg.header.stamp.sec) + float(time_msg.header.stamp.nanosec) / 1000000000
         self.lock = False
+
+    @staticmethod
+    def interpolate_utc(Cm, Cp1, Cp2, Tp1, Tp2):
+        '''
+        Linearly interpolates the utc time of a given measurement from the gps time reference.
+        Cm = time.time() value at the time of mth measurement
+        Cp1 = time.time() value at the time of the first ideal clock pulse
+        Cp2 = time.time() value at the time of the second ideal clock pulse
+        Tp1 = Time from the UBX message corresponding to first ideal clock pulse
+        Tp2 = Time from the UBX message corresponding to second ideal clock pulse
+        '''
+        return Tp1 + (Cm - Cp1)/(Cp2 - Cp1) * (Tp2 - Tp1)
 
     def pth_callback(self, ser):
         # timestamp = self.gps_ts + (self.rel_ts - time.time())
@@ -57,8 +76,10 @@ class PthProbe(Node):
             pth_time = time.time()
             while self.lock:
                 time.sleep(0.05)
-            dt = pth_time - self.rel_ts
-            ts = self.gps_ts + dt
+            if self.rel_ts1:
+                ts = self.interpolate_utc(pth_time, self.rel_ts1, self.rel_ts2, self.gps_ts1, self.gps_ts2)
+            else:
+                return
             msg = Pth()
             msg.header.stamp.sec = int(ts)
             msg.header.stamp.nanosec = int((ts - int(ts))*1000000000)

@@ -1,6 +1,7 @@
 import datetime
 import rclpy
 from rclpy.node import Node
+from rclpy.time import Time
 from std_msgs.msg import Header
 from sensor_msgs.msg import NavSatFix, NavSatStatus, TimeReference
 import RPi.GPIO as GPIO
@@ -66,7 +67,7 @@ class Gps(Node):
                     self.TIMEOUT, self.UBXONLY)
             return
 
-        self.get_logger().info(f"Timepulse triggered.")
+        # self.get_logger().info(f"Timepulse triggered.")
         pubbed = False
         while ubx and not pubbed:
             if (ubx.msg_cls + ubx.msg_id) == b"\x01\x07": # NAV_PVT
@@ -106,9 +107,7 @@ class Gps(Node):
             second -= 1
         utc = datetime.datetime(ubx.year, ubx.month, ubx.day, ubx.hour, ubx.min, second, int(usecond))
         gps_time = utc.timestamp()
-        gps_stamp = self.get_clock().now().to_msg()
-        gps_stamp.sec = int(gps_time)
-        gps_stamp.nanosec = int((gps_time - int(gps_time))*1000000000)
+        gps_stamp = Time(seconds=int(gps_time), nanoseconds=int((gps_time - int(gps_time))*1000000000))
         return gps_stamp
 
 def main(args=None):

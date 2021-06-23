@@ -83,9 +83,9 @@ class Gps(Node):
 
                 gps_msg.status = fix_stat
                 gps_msg.header = msg_hdr
-                gps_msg.latitude = float(ubx.lat)
-                gps_msg.longitude = float(ubx.lon)
-                gps_msg.altitude = float(ubx.height)
+                gps_msg.latitude = float(ubx.lat)/10000000
+                gps_msg.longitude = float(ubx.lon)/10000000
+                gps_msg.altitude = float(ubx.height)/1000
 
                 timeref_msg.header = msg_hdr
                 timeref_msg.time_ref = system_time
@@ -94,7 +94,7 @@ class Gps(Node):
                 self.fix_pub.publish(gps_msg)
                 self.time_pub.publish(timeref_msg)
 
-                self.get_logger().info(f"Publishing gps message: {str(ubx)}")
+                self.get_logger().info(f"Publishing gps message: ({timeref_msg.header.stamp.sec}.{timeref_msg.header.stamp.nanosec}): ({gps_msg.latitude}, {gps_msg.longitude}, {gps_msg.altitude})")
                 pubbed = True
             ubx = self.ubp.read()
 

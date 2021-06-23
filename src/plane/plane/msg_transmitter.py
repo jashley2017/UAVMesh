@@ -34,15 +34,14 @@ class MsgTransmitter(Node):
         self.gps_code = b'1'
         self.pth_code = b'2'
 
-    def _create_bytelist(self, flt):
-        return list(struct.unpack('4c', struct.pack('f', flt)))
-        # TODO: this is the generic, but only float parsing is needed 
-        # return list(struct.unpack(str(len(struct.pack('f', flt))) + c , struct.pack('f', flt)))
+    def _create_bytelist(self, var, bytelen=4, vartype='f'):
+        # TODO: can probably autodetect the bytelen for vartype
+        return list(struct.unpack(str(bytelen) + 'c', struct.pack(vartype, var)))
 
     def gps_callback(self, msg):
         msg_data = [self.gps_code]
-        ts = msg.header.stamp.sec + msg.header.stamp.nanosec / 1000000000
-        msg_data += self._create_bytelist(ts)
+        ts = float(msg.header.stamp.sec) + float(msg.header.stamp.nanosec) / 1000000000
+        msg_data += self._create_bytelist(ts, bytelen=8, vartype='d')
         msg_data += self._create_bytelist(msg.latitude)
         msg_data += self._create_bytelist(msg.longitude)
         msg_data += self._create_bytelist(msg.altitude)
@@ -54,9 +53,9 @@ class MsgTransmitter(Node):
 
     def pth_callback(self, msg):
         msg_data = [self.pth_code]
-        ts = msg.header.stamp.sec + msg.header.stamp.nanosec / 1000000000
-        msg_data += self._create_bytelist(ts)
-        msg_data += list(struct.unpack('4c', struct.pack('i', msg.serial)))[0:2]
+        ts = float(msg.header.stamp.sec) + float(msg.header.stamp.nanosec) / 1000000000
+        msg_data += self._create_bytelist(ts, bytelen=8, vartype='d')
+        msg_data += self._create_bytelist(msg.serial, bytelen=4, vartype='i')[0:2]
         msg_data += self._create_bytelist(msg.temp1)
         msg_data += self._create_bytelist(msg.temp2)
         msg_data += self._create_bytelist(msg.temp3)

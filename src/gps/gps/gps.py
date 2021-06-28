@@ -107,7 +107,9 @@ class Gps(Node):
             second -= 1
         utc = datetime.datetime(ubx.year, ubx.month, ubx.day, ubx.hour, ubx.min, second, int(usecond))
         gps_time = utc.timestamp()
-        gps_stamp = Time(seconds=int(gps_time), nanoseconds=int((gps_time - int(gps_time))*1000000000))
+        gps_stamp = self.get_clock().now().to_msg()
+        gps_stamp.sec = int(gps_time)
+        gps_stamp.nanosec = int((gps_time - int(gps_time))*1000000000))
         return gps_stamp
 
 def main(args=None):

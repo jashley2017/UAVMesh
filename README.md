@@ -69,6 +69,6 @@ ros2 launch gsu tsdb.launch.py
 InfluxDB is a method to aggregate data on locally in a scalable and queryable way. This will permit usage of all available data in real time. 
 A quick way to visualize time-series data coming from InfluxDB is through a web dashboard called Grafana.
 
-* [Install InfluxDB]('https://pimylifeup.com/raspberry-pi-influxdb/')
-* [Install Grafana]('https://grafana.com/tutorials/install-grafana-on-raspberry-pi/')
-* [Using InfluxDB with python]('https://influxdb-python.readthedocs.io/en/latest/')
+* [Install InfluxDB](https://pimylifeup.com/raspberry-pi-influxdb/)
+* [Install Grafana](https://grafana.com/tutorials/install-grafana-on-raspberry-pi/)
+* [Using InfluxDB with python](https://influxdb-python.readthedocs.io/en/latest/)

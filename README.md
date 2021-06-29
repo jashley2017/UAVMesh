@@ -21,27 +21,54 @@ This implementation is being created to support the projects under the following
 
 ### Initial Pi setup
 
-* Install ROS2
-* Install Python Dependencies
-	* TODO
-* Clone repository
-* Copy device rules for devices
-```bash
-cp devices/*.rules /etc/udev/rules.d/
-sudo udevadm control --reload && sudo udevadm trigger
+1. If you are a cloned device, run the initial setup script to ensure no network confusion
+```bash 
+sudo ./devices/first_setup.sh {device_name}
 ```
-
-## Current Functionality
-
-* Build ros2
+2. Install ROS2
+3. Install Python Dependencies
+	- TODO
+	- pyubx2
+	- XBee
+	- RPi.GPIO
+	- influxdb (gsu)
+4. Clone repository
+5. Build ros2
 ```
 colcon build
 source install/setup.bash
 ```
+6. Copy device rules for device aliases
+```bash
+sudo cp ./devices/*.rules /etc/udev/rules.d/
+sudo udevadm control --reload && sudo udevadm trigger
+```
+7. Copy and enable the roslaunch service
+	- NOTE: make sure to change the paths to correctly represent where the install folder is.
+	- NOTE: uncomment the correct launch file for plane or gsu respectively
+```bash
+sudo cp ./devices/roslaunch.service /etc/systemd/system/roslaunch.service
+sudo systemctl daemon-reload
+sudo systemctl enable roslaunch.service
+```
+
+## Current Functionality
 
 * Launch plane sensors
 ```
 ros2 launch plane main.launch.py
 ```
 
-* Listen on base radio for plane sensor messages
+* Launch GSU logger or influxdb interface
+```
+ros2 launch gsu logger.launch.py
+ros2 launch gsu tsdb.launch.py
+```
+
+### InfluxDB setup and rationale
+InfluxDB is a method to aggregate data on locally in a scalable and queryable way. This will permit usage of all available data in real time. 
+A quick way to visualize time-series data coming from InfluxDB is through a web dashboard called Grafana.
+
+* [Install InfluxDB]('https://pimylifeup.com/raspberry-pi-influxdb/')
+* [Install Grafana]('https://grafana.com/tutorials/install-grafana-on-raspberry-pi/')
+* [Using InfluxDB with python]('https://influxdb-python.readthedocs.io/en/latest/')

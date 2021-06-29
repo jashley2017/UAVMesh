@@ -71,13 +71,14 @@ class GroundStation(Node):
         while self.lock:
             time.sleep(0.05)
         if self.rel_ts1:
-            ts = self.interpolate_utc(pth_time, self.rel_ts1, self.rel_ts2, self.gps_ts1, self.gps_ts2)
+            ts = self.interpolate_utc(time.time(), self.rel_ts1, self.rel_ts2, self.gps_ts1, self.gps_ts2)
+            # self.get_logger().info(f"{time.time()} -> {ts}:\n [{self.rel_ts1}, {self.gps_ts1}]\n [{self.rel_ts2}, {self.gps_ts2}]")
         else:
             return
         samples = []
         if msg.data[0] == self.gps_code or msg.data[0] == self.pth_code:
             msg_stamp = self._unpack_bytelist(msg.data[1:9], bytesize=8, vartype='d')
-            # self.get_logger().info(f"current timestamps: GPS:{self.gps_ts} + {dt}\nREL:{self.rel_ts}\nMSG:{msg_stamp}")
+            # self.get_logger().info(f"current timestamps: MSG:{msg_stamp}")
             roundtrip_time = ts - msg_stamp
             if roundtrip_time > 0:
                 samples = [

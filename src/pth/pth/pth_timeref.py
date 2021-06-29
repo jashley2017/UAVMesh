@@ -14,7 +14,7 @@ class PthProbe(Node):
         self.declare_parameter('pth_top', 'pth')
         # defaults to a virtual port initialize by socat
         # socat -d -d pty,raw,echo=0 pty,raw,echo=0
-        self.declare_parameter('pth_port', '/dev/pts/2')
+        self.declare_parameter('pth_port', '/dev/pth')
         self.declare_parameter('pth_baud', 9600)
         self.declare_parameter('time_topic', 'gps_time')
         pub_top = self.get_parameter('pth_top').value

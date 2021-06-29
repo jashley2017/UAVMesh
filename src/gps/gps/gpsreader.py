@@ -46,7 +46,7 @@ class GPSReader:
             self._serial_object = Serial(
                 self._port, self._baudrate, timeout=self._timeout
             )
-            self._ubxreader = UBXReader(BufferedReader(self._serial_object), ubxonly=self._ubx_only)
+            self._ubxreader = UBXReader(BufferedReader(self._serial_object, buffer_size=1), ubxonly=self._ubx_only)
             self._connected = True
         except (SerialException, SerialTimeoutException) as err:
             print(f"Error connecting to serial port {err}")

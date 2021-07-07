@@ -11,6 +11,7 @@ def generate_launch_description():
             parameters=[
                 {"xbee_port": '/dev/xbee'},
                 {"xbee_baud": 9600},
+                {"is_gsu": True},
 
             ]
         ),

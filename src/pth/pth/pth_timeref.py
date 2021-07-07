@@ -43,7 +43,6 @@ class PthProbe(Node):
         self.read_thread.join()
 
     def timestamp_creator(self, time_msg):
-        # TODO: this is probably backwards from what it should be, but it lines up with NavSatFix
         self.lock = True
         # the time_ref holds the system time 
         self.rel_ts1 = self.rel_ts2
@@ -79,7 +78,7 @@ class PthProbe(Node):
             if self.rel_ts1:
                 ts = self.interpolate_utc(pth_time, self.rel_ts1, self.rel_ts2, self.gps_ts1, self.gps_ts2)
             else:
-                return
+                continue
             msg = Pth()
             msg.header.stamp.sec = int(ts)
             msg.header.stamp.nanosec = int((ts - int(ts))*1000000000)
@@ -98,6 +97,7 @@ class PthProbe(Node):
                 self.get_logger().info(f"Publishing pth {msg.serial}")
 
 def main(args=None):
+    print("Launching")
     rclpy.init(args=args)
     pth_pub = PthProbe()
     rclpy.spin(pth_pub)

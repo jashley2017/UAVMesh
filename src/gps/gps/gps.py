@@ -75,10 +75,10 @@ class Gps(Node):
                 msg_hdr.stamp = self._gen_timestamp_from_utc(ubx)
 
                 fix_stat = NavSatStatus()
+
                 if ubx.fixType == 0:
-                    fix_stat.status = -1
-                else:
-                    fix_stat.status = 0
+                    continue
+
                 fix_stat.service = SERVICE_GPS
 
                 gps_msg.status = fix_stat
@@ -94,18 +94,21 @@ class Gps(Node):
                 self.fix_pub.publish(gps_msg)
                 self.time_pub.publish(timeref_msg)
 
-                self.get_logger().info(f"{time.time()} Publishing gps message: ({timeref_msg.header.stamp.sec}.{timeref_msg.header.stamp.nanosec}): ({gps_msg.latitude}, {gps_msg.longitude}, {gps_msg.altitude})")
+                self.get_logger().info(f"Publishing gps message: ({timeref_msg.header.stamp.sec}.{timeref_msg.header.stamp.nanosec}): ({gps_msg.latitude}, {gps_msg.longitude}, {gps_msg.altitude})")
                 return
             ubx = self.ubp.read()
 
     def _gen_timestamp_from_utc(self, ubx):
         second = ubx.second
         usecond = ubx.nano/1000
+        subtract_sec = False
         if usecond < 0:
             usecond = 1000000 + usecond
-            second -= 1
+            subtract_sec = True
         utc = datetime.datetime(ubx.year, ubx.month, ubx.day, ubx.hour, ubx.min, second, int(usecond))
         gps_time = utc.timestamp()
+        if subtract_sec:
+            gps_time -= 1
         gps_stamp = self.get_clock().now().to_msg()
         gps_stamp.sec = int(gps_time)
         gps_stamp.nanosec = int((gps_time - int(gps_time))*1000000000)

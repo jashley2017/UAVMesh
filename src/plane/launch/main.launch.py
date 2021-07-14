@@ -1,11 +1,19 @@
+import os
+from launch_ros.actions import Node
 from launch import LaunchDescription
-from launch_ros.actions import Node 
+
+HOSTNAME = os.uname()[1]
+STR = 0
+INT = 1
+FLOAT = 2
+HEX = 3
 
 def generate_launch_description():
-    ld = LaunchDescription([
+    '''create the launch description for the plane'''
+    launchdesc = LaunchDescription([
         Node(
             package="gps",
-            namespace='plane', # TODO index this variably
+            namespace=HOSTNAME,
             executable="neo_gps",
             name="gps",
             parameters=[
@@ -15,18 +23,32 @@ def generate_launch_description():
             ]
         ),
         Node(
-            package="pth",
-            namespace='plane', # TODO index this variably
-            executable="pth_timeref",
-            name="pth",
+            package="serial_timeref",
+            namespace=HOSTNAME,
+            executable="serial_timeref",
             parameters=[
-                {"pth_top": 'pth_msg'},
-                {"pth_port": '/dev/pth'},
+                {'sensor_top': "pth"},
+                {'sensor_msg': "environ_msgs.msg.Pth"},
+                {'sensor_port': '/dev/pth'},
+                {'sensor_baud': 9600},
+                {'sensor_reg': r"\$UKPTH,(?P<serial>[0-9A-F]{4}),(?P<pressure>\d*\.?\d*),(?P<pressure_unit>[A-Za-z]+),(?P<temp1>\d*\.?\d*),(?P<temp1_unit>[A-Za-z]+),(?P<temp2>\d*\.?\d*),(?P<temp2_unit>[A-Za-z]+),(?P<humidity>\d*\.?\d*),(?P<hum_unit>[^0-9,]*),(?P<temp3>\d*\.?\d*),(?P<temp3_unit>[A-Za-z]+)"},
+                {'time_topic': 'gps_time'},
+                {'sensor_key_types':
+                    { # enumerations from SerialSensor
+                        "serial": HEX,
+                        "pressure": FLOAT,
+                        "temp1": FLOAT,
+                        "temp2": FLOAT,
+                        "temp3": FLOAT,
+                        "humidity": FLOAT,
+                    }
+                }
             ]
+
         ),
         Node(
             package='xbee_uav',
-            namespace='plane', # TODO index this variably
+            namespace=HOSTNAME,
             executable='radio',
             name='xbee_radio',
             parameters=[
@@ -37,7 +59,7 @@ def generate_launch_description():
         ),
         Node(
             package='plane',
-            namespace='plane', # TODO: index this variably
+            namespace=HOSTNAME,
             executable='transmitter',
             name='msg_transmitter',
             parameters=[
@@ -47,4 +69,4 @@ def generate_launch_description():
             ]
         ),
     ])
-    return ld
+    return launchdesc

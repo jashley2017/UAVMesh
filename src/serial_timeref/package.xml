@@ -1,11 +1,11 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>pth</name>
-  <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="ubuntu@todo.todo">ubuntu</maintainer>
-  <license>TODO: License declaration</license>
+  <name>serial_timeref</name>
+  <version>0.1.0</version>
+  <description>A ROS2 node for time synchronized serial messages.</description>
+  <maintainer email="jashley2017@gmail.com">Josh Ashley</maintainer>
+  <license>Apache 2.0</license>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
@@ -15,7 +15,9 @@
   <export>
     <build_type>ament_python</build_type>
   </export>
+
 	<exec_depend>rclpy</exec_depend>
 	<exec_depend>std_msgs</exec_depend>
 	<exec_depend>environ_msgs</exec_depend>
+
 </package>

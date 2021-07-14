@@ -18,7 +18,7 @@
 
   <exec_depend>rclpy</exec_depend>
   <exec_depend>gps</exec_depend>
-  <exec_depend>pth</exec_depend>
+  <exec_depend>serial_timeref</exec_depend>
   <exec_depend>xbee_uav</exec_depend>
   <exec_depend>xbee_interfaces</exec_depend>
   <exec_depend>environ_msgs</exec_depend>

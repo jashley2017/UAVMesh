@@ -5,7 +5,7 @@
 
 // Uldaq
 #include "uldaq.h"
-#include "include/utility.h"
+#include "utility.h"
 
 // ROS2
 #include "rclcpp/rclcpp.hpp"
@@ -27,9 +27,9 @@ class UldaqPublisher : public rclcpp::Node
       int num_chan;
       int volt_range;
       int daq_rate;
-      this.get_parameter("chan_num", num_chan); // wtf why arent these the same? I am an asshole jeez...
-      this.get_parameter("v_range", volt_range);
-      this.get_parameter("rate", daq_rate);
+      this->get_parameter("chan_num", num_chan); // wtf why arent these the same? I am an asshole jeez...
+      this->get_parameter("v_range", volt_range);
+      this->get_parameter("rate", daq_rate);
 
       bufpub = this->create_publisher<uldaq_msgs::msg::Buffer>("uldaq_buffer", 10);
       recpub = this->create_publisher<uldaq_msgs::msg::Measurement>("uldaq_measurement", 10);
@@ -44,12 +44,10 @@ class UldaqPublisher : public rclcpp::Node
       // Acquire device(s)
       detectError = ulGetDaqDeviceInventory(interfaceType, devDescriptors, &numDevs);
       if(handleError(detectError, "Cannot acquire device inventory\n")){
-        	return -1;
       }
       // verify at least one DAQ device is detected
       if (numDevs == 0) {
         cerr << "No DAQ device is detected\n" << endl;
-        return -1;
       }
       DeviceDescriptor = devDescriptors[0];
       // get a handle to the DAQ device associated with the first descriptor
@@ -65,7 +63,6 @@ class UldaqPublisher : public rclcpp::Node
       double* buffer = (double*) malloc(numBufferPoints * sizeof(double));
       if(buffer == 0){
         cout << "Out of memory\n" << endl;
-        return -1;
       }
       Range gain = UldaqPublisher::getGain(volt_range);
       // DAQ is master to Vectornav, attached VN_SYNCIN to CLKOUT on DAQ.
@@ -80,16 +77,14 @@ class UldaqPublisher : public rclcpp::Node
       user_data.buffer_size = numBufferPoints; 
       user_data.lowChan = LowChan;
       user_data.highChan = HighChan;
-      detectError = ulEnableEvent(deviceHandle, scan_event, event_on_samples, std::bind(&UldaqPublisher::daqEventHandle, this), &user_data); // if this complains about static we gonna have to get a little weird with the publishers
+      detectError = ulEnableEvent(deviceHandle, scan_event, event_on_samples, std::bind(&UldaqPublisher::daqEventHandle, this, deviceHandle, scan_event, event_on_samples, user_data), &user_data); // if this complains about static we gonna have to get a little weird with the publishers
       if (handleError(detectError, "Could not enable event\n")){
-        return -1;
       }
 
       usleep(20000); // increase stability of the deviceHandle when on the external clock
 
       detectError = ulAInScan(deviceHandle, LowChan, HighChan, AI_SINGLE_ENDED, gain, samplesPerChan, &rated, options,  flags, buffer);
       if (handleError(detectError, "Couldn't start scan\n")){
-        return -1;
       }
 
       UldaqPublisher::awaitDaqEvents(); // TODO: expose the Daq pthread event to be able to spin on
@@ -187,9 +182,12 @@ class UldaqPublisher : public rclcpp::Node
       } else if (eventType == DE_ON_END_OF_INPUT_SCAN) {
         printf("\nThe scan using device %s (%s) is complete \n", activeDevDescriptor.productName, activeDevDescriptor.uniqueId);
       }
-      bufpub->publish(full_buffer)
-      recpub->publish(recent_measurement)
+      bufpub->publish(full_buffer);
+      recpub->publish(recent_measurement);
     }
+    unsigned long past_scan;
+    rclcpp::Publisher<uldaq_msgs::msg::Buffer>::SharedPtr bufpub;
+    rclcpp::Publisher<uldaq_msgs::msg::Measurement>::SharedPtr recpub;
 };
 
 int main(int argc, char * argv[]){

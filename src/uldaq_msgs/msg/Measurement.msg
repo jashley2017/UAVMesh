@@ -1,1 +1,1 @@
-double[] data
+float64[] data

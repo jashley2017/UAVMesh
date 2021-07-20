@@ -18,6 +18,7 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(uldaq_msgs REQUIRED)
+find_package(rclcpp REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
@@ -35,5 +36,9 @@ endif()
 
 add_subdirectory(src/uldaq) # compile our uldaq library 
 add_executable(buffer_pub src/buffer_pub.cpp)
-ament_target_dependencies(buffer_pub rclcpp uldaq_msgs uldaq) # this does the same thing as target_link_libraries?
+ament_target_dependencies(buffer_pub rclcpp uldaq_msgs) # this does the same thing as target_link_libraries?
+include_directories(src/uldaq/src include)
+target_link_libraries(buffer_pub 
+  uldaq
+)
 ament_package()

@@ -19,6 +19,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(uldaq_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclcpp_components REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
@@ -35,10 +36,18 @@ if(BUILD_TESTING)
 endif()
 
 add_subdirectory(src/uldaq) # compile our uldaq library 
-add_executable(buffer_pub src/buffer_pub.cpp)
-ament_target_dependencies(buffer_pub rclcpp uldaq_msgs) # this does the same thing as target_link_libraries?
+# add_executable(buffer_pub src/buffer_pub.cpp)
+add_library(buffer_pub_component SHARED src/buffer_pub.cpp)
 include_directories(src/uldaq/src include)
-target_link_libraries(buffer_pub 
+target_compile_definitions(buffer_pub_component PRIVATE "COMPOSITION_BUILDING_DLL")
+rclcpp_components_register_node(
+  buffer_pub_component
+  PLUGIN "UldaqPublisher"
+  EXECUTABLE buffer_pub
+  )
+
+ament_target_dependencies(buffer_pub_component rclcpp rclcpp_components uldaq_msgs) # this does the same thing as target_link_libraries?
+target_link_libraries(buffer_pub_component 
   uldaq
 )
 ament_package()

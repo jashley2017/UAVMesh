@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 project(uldaq)
-add_compile_options(-std=c++11 -g)
+add_compile_options(-std=c++11 -g -fPIC)
 
 file(GLOB SRC_FILES src/*.cpp  src/*/*.cpp  src/*/*/*.cpp 
                     src/*.h     src/*/*.h    src/*/*/*.h

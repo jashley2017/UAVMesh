@@ -1,15 +1,15 @@
 cmake_minimum_required(VERSION 3.0)
-project(uldaq)
-add_compile_options(-std=c++11 -g -fPIC)
+project(libuldaq)
+add_compile_options(-std=c++11 -g -fPIC -w)
 
 file(GLOB SRC_FILES src/*.cpp  src/*/*.cpp  src/*/*/*.cpp 
                     src/*.h     src/*/*.h    src/*/*/*.h
                     src/*.c     src/*/*.c    src/*/*/*.c
   )
 
-add_library(uldaq ${SRC_FILES})
+add_library(libuldaq ${SRC_FILES})
 
-target_link_libraries(uldaq
+target_link_libraries(libuldaq
   usb-1.0
   )
 

@@ -16,7 +16,7 @@
 #include "buffer_pub.hpp"
 
 using namespace std;
-
+namespace uldaq_ros {
 UldaqPublisher::UldaqPublisher(const rclcpp::NodeOptions& options)
   : Node("uldaq_publisher", options), samples_read(0) {
   declare_parameter<int>("v_range", 5);
@@ -191,6 +191,7 @@ void UldaqPublisher::_daqEventHandle(DaqDeviceHandle daqDeviceHandle, DaqEventTy
   bufpub->publish(full_buffer);
   recpub->publish(recent_measurement);
 }
+} // namespace uldaq_ros
 
 #include "rclcpp_components/register_node_macro.hpp"
-RCLCPP_COMPONENTS_REGISTER_NODE(UldaqPublisher)
+RCLCPP_COMPONENTS_REGISTER_NODE(uldaq_ros::UldaqPublisher)

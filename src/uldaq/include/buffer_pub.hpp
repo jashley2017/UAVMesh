@@ -14,15 +14,10 @@
 
 #define MAX_DEV_COUNT 100
 
-struct TransmitArgs { 
-  char* xbee_port;
-  int xbee_rate;
-};
-
+namespace uldaq_ros { 
 class UldaqPublisher : public rclcpp::Node {
   public:
     explicit UldaqPublisher(const rclcpp::NodeOptions& options);
-    ~UldaqPublisher();
   private:
     Range getGain(int vRange);
     static void daqEventHandle(DaqDeviceHandle daqDeviceHandle, DaqEventType eventType, unsigned long long eventData, void* userData);
@@ -42,3 +37,4 @@ struct ScanEventParameters
   UldaqPublisher* node; // node to operate within
 };
 typedef struct ScanEventParameters ScanEventParameters;
+} // namespace uldaq_ros

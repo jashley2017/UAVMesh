@@ -18,6 +18,8 @@ namespace uldaq_ros {
 class UldaqPublisher : public rclcpp::Node {
   public:
     explicit UldaqPublisher(const rclcpp::NodeOptions& options);
+    ~UldaqPublisher();
+    size_t samples_read;
   private:
     Range getGain(int vRange);
     static void daqEventHandle(DaqDeviceHandle daqDeviceHandle, DaqEventType eventType, unsigned long long eventData, void* userData);
@@ -25,7 +27,6 @@ class UldaqPublisher : public rclcpp::Node {
     unsigned long past_scan;
     rclcpp::Publisher<uldaq_msgs::msg::Buffer>::SharedPtr bufpub;
     rclcpp::Publisher<uldaq_msgs::msg::Measurement>::SharedPtr recpub;
-    size_t samples_read;
 };
 
 struct ScanEventParameters

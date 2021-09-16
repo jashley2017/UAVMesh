@@ -30,6 +30,8 @@ UldaqPublisher::UldaqPublisher(const rclcpp::NodeOptions& options)
 
   bufpub = create_publisher<uldaq_msgs::msg::Buffer>("uldaq_buffer", 10);
   recpub = create_publisher<uldaq_msgs::msg::Measurement>("uldaq_measurement", 10);
+  past_scan = 0;
+  samples_read = 0;
 
   DaqDeviceDescriptor devDescriptors[MAX_DEV_COUNT];
   DaqDeviceInterface interfaceType = ANY_IFC;
@@ -49,6 +51,11 @@ UldaqPublisher::UldaqPublisher(const rclcpp::NodeOptions& options)
     RCLCPP_ERROR(get_logger(), "No DAQ device is detected\n");
     rclcpp::shutdown();
   }
+
+  RCLCPP_INFO(get_logger(),"Found %d DAQ device(s)\n", numDevs);
+	for (int i = 0; i < (int) numDevs; i++) {
+		RCLCPP_INFO(get_logger(),"  [%d] %s: (%s)\n", i, devDescriptors[i].productName, devDescriptors[i].uniqueId);
+  }
   DeviceDescriptor = devDescriptors[0];
   // get a handle to the DAQ device associated with the first descriptor
   deviceHandle = ulCreateDaqDevice(DeviceDescriptor);
@@ -67,7 +74,7 @@ UldaqPublisher::UldaqPublisher(const rclcpp::NodeOptions& options)
   }
   Range gain = UldaqPublisher::getGain(volt_range);
   // DAQ is master to Vectornav, attached VN_SYNCIN to CLKOUT on DAQ.
-  ScanOption scan_options = (ScanOption) (SO_DEFAULTIO | SO_CONTINUOUS | SO_PACEROUT);
+  ScanOption scan_options = (ScanOption) (SO_DEFAULTIO | SO_CONTINUOUS ); //| SO_PACEROUT);
   AInScanFlag flags = AINSCAN_FF_DEFAULT;
 
   // setup scan event for the DAQ
@@ -78,6 +85,7 @@ UldaqPublisher::UldaqPublisher(const rclcpp::NodeOptions& options)
   user_data.buffer_size = numBufferPoints; 
   user_data.lowChan = LowChan;
   user_data.highChan = HighChan;
+  user_data.node = this;
   // TODO: if this bind ends up failing, check how the ros2/vectornav node does it
   detectError = ulEnableEvent(deviceHandle, scan_event, event_on_samples, &UldaqPublisher::daqEventHandle, &user_data); // if this complains about static we gonna have to get a little weird with the publishers
   if (detectError != 0){
@@ -92,8 +100,13 @@ UldaqPublisher::UldaqPublisher(const rclcpp::NodeOptions& options)
     RCLCPP_ERROR(get_logger(), "Couldn't start scan\n");
     rclcpp::shutdown();
   }
-  /*
+  RCLCPP_INFO(get_logger(), "successfully initialized!");
+}
+
+UldaqPublisher::~UldaqPublisher(){
   // wrap up daq
+  std::cout << "WHOOPS" << endl;
+  /*
   ulAInScanStop(deviceHandle);
   ulDisableEvent(deviceHandle, scan_event);
   ulDisconnectDaqDevice(deviceHandle);
@@ -131,7 +144,7 @@ Range UldaqPublisher::getGain(int vRange) {
 }
 void UldaqPublisher::daqEventHandle(DaqDeviceHandle daqDeviceHandle, DaqEventType eventType, unsigned long long eventData, void* userData)
 { 
-  ScanEventParameters* scanEventParameters = (ScanEventParameters*) userData;
+  ScanEventParameters* scanEventParameters = (ScanEventParameters*)userData;
   scanEventParameters->node->_daqEventHandle(daqDeviceHandle, eventType, eventData, userData);
 }
 void UldaqPublisher::_daqEventHandle(DaqDeviceHandle daqDeviceHandle, DaqEventType eventType, unsigned long long eventData, void* userData)
@@ -151,6 +164,7 @@ void UldaqPublisher::_daqEventHandle(DaqDeviceHandle daqDeviceHandle, DaqEventTy
   long number_of_samples; 
   double *current_doubles = (double *)malloc(chan_count*sizeof(double)); // most recent reading
 
+
   if (eventType == DE_ON_DATA_AVAILABLE) {
     unsigned long sample_index = total_samples % scanEventParameters->buffer_size;
     // TODO: the following copy lines are a lot to unpack and may not be correct
@@ -163,28 +177,30 @@ void UldaqPublisher::_daqEventHandle(DaqDeviceHandle daqDeviceHandle, DaqEventTy
     if (sample_index < past_scan) { // buffer wrap around
       // copy the current valid buffer range to our message
       number_of_samples = scanEventParameters->buffer_size - past_scan; // go to the end of the buffer
-      std::copy(&(scanEventParameters->buffer[past_scan]), &(scanEventParameters->buffer[past_scan+sizeof(double)*(number_of_samples-1)]), full_buffer.data.begin()); 
+      std::copy(&(scanEventParameters->buffer[past_scan]), &(scanEventParameters->buffer[past_scan+sizeof(double)*(number_of_samples-1)]), std::back_inserter(full_buffer.data)); 
       number_of_samples = sample_index;
-      std::copy(&(scanEventParameters->buffer[0]), &(scanEventParameters->buffer[past_scan+sizeof(double)*(number_of_samples-1)]), back_inserter(full_buffer.data));  // back_inserter is an iterator of push_back
+      std::copy(&(scanEventParameters->buffer[0]), &(scanEventParameters->buffer[past_scan+sizeof(double)*(number_of_samples-1)]), std::back_inserter(full_buffer.data));  // back_inserter is an iterator of push_back
       // convert the most recent reading to its double form
       memcpy(current_doubles, &(scanEventParameters->buffer[past_scan+sizeof(double)*(number_of_samples-1) - sizeof(double)*chan_count]), sizeof(double)*chan_count);
-      std::copy(current_doubles, current_doubles+chan_count-1, recent_measurement.data.begin());
+      std::copy(current_doubles, current_doubles+chan_count-1, std::back_inserter(recent_measurement.data));
     } else { // normal operation
       number_of_samples = sample_index - past_scan;
       // copy the current valid buffer range to our message
-      std::copy(&(scanEventParameters->buffer[past_scan]), &(scanEventParameters->buffer[past_scan+sizeof(double)*(number_of_samples-1)]), full_buffer.data.begin());
+      std::copy(&(scanEventParameters->buffer[past_scan]), &(scanEventParameters->buffer[past_scan+sizeof(double)*(number_of_samples-1)]), std::back_inserter(full_buffer.data));
       // convert the most recent reading to its double form
       memcpy(current_doubles, &(scanEventParameters->buffer[past_scan+sizeof(double)*(number_of_samples-1) - sizeof(double)*chan_count]), sizeof(double)*chan_count);
-      std::copy(current_doubles, current_doubles+chan_count-1, recent_measurement.data.begin());
+      std::copy(current_doubles, current_doubles+chan_count-1, std::back_inserter(recent_measurement.data));
     }
     past_scan = sample_index;
   } else if (eventType == DE_ON_INPUT_SCAN_ERROR) {
+    cout << "error" << endl;
     err = (UlError) eventData;
     char errMsg[ERR_MSG_LEN];
     ulGetErrMsg(err, errMsg);
     RCLCPP_ERROR(get_logger(), "Error Code: %d \n", err);
     RCLCPP_ERROR(get_logger(), "Error Message: %s \n", errMsg);
   } else if (eventType == DE_ON_END_OF_INPUT_SCAN) {
+    cout << "scan complete" << endl;
     RCLCPP_ERROR(get_logger(), "\nThe scan using device %s (%s) is complete \n", activeDevDescriptor.productName, activeDevDescriptor.uniqueId);
   }
   free(current_doubles);

@@ -81,14 +81,14 @@ class GroundStation(Node):
             # self.get_logger().info(f"current timestamps: MSG:{msg_stamp}")
             roundtrip_time = ts - msg_stamp
             if roundtrip_time > 0:
+                # time and planeID here are used to relate this delay to specific measurement
                 samples = [
                         {
                             "measurement": "time_lag", 
                             "tags": {
-                                "host": "groundstation",
-                                "region": "us-east"
+                                "PlaneID": msg.dev_addr
                                 },
-                            "time": int(ts*1000), # ms precision 
+                            "time": int(msg_stamp*1000), # ms precision 
                             "fields": {
                                 "Time_Difference": roundtrip_time,
                                 }
@@ -99,13 +99,10 @@ class GroundStation(Node):
                         {
                             "measurement": "pth",
                             "tags": {
-                                "host": "groundstation",
-                                "region": "us-east"
+                                "PlaneID": msg.dev_addr
                                 },
                             "time": int(msg_stamp*1000),
                             "fields": {
-                                # TODO: units
-                                "PlaneID": msg.dev_addr,
                                 "Serial": struct.unpack('i', struct.pack('4c', *msg.data[9:11], b'\x00', b'\x00'))[0],
                                 "Temperature1": self._unpack_bytelist(msg.data[11:15]),
                                 "Temperature2": self._unpack_bytelist(msg.data[15:19]),
@@ -120,12 +117,10 @@ class GroundStation(Node):
                         {
                             "measurement": "gps",
                             "tags": {
-                                "host": "groundstation",
-                                "region": "us-east"
+                                "PlaneID": msg.dev_addr
                                 },
                             "time": int(msg_stamp*1000),
                             "fields": {
-                                "PlaneID": msg.dev_addr,
                                 "Latitude": self._unpack_bytelist(msg.data[9:13]),
                                 "Longitude": self._unpack_bytelist(msg.data[13:17]),
                                 "Altitude": self._unpack_bytelist(msg.data[17:21])

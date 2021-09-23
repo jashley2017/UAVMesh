@@ -1,4 +1,5 @@
 #include <chrono>
+#include <ctime>
 #include <memory>
 #include <functional>
 #include <string>
@@ -153,6 +154,18 @@ void UldaqPublisher::_daqEventHandle(DaqDeviceHandle daqDeviceHandle, DaqEventTy
   auto recent_measurement = uldaq_msgs::msg::Measurement();
   auto full_buffer = uldaq_msgs::msg::Buffer();
 
+
+  // handle time
+  const auto p0 = std::chrono::time_point<std::chrono::high_resolution_clock>{};
+  const auto p3 = std::chrono::high_resolution_clock::now();
+
+  auto tstamp = p3 - p0;
+  int32_t sec = std::chrono::duration_cast<std::chrono::seconds>(tstamp).count();
+  int32_t nsec = std::chrono::duration_cast<std::chrono::nanoseconds>(tstamp).count() % 1000000000UL;
+  rclcpp::Time n(sec, nsec);
+  recent_measurement.header.stamp = n;
+  full_buffer.header.stamp = n;
+
   DaqDeviceDescriptor activeDevDescriptor;
   ulGetDaqDeviceDescriptor(daqDeviceHandle, &activeDevDescriptor);
   UlError err = ERR_NO_ERROR;
@@ -163,7 +176,6 @@ void UldaqPublisher::_daqEventHandle(DaqDeviceHandle daqDeviceHandle, DaqEventTy
   unsigned long long total_samples = eventData*chan_count; 
   long number_of_samples; 
   double *current_doubles = (double *)malloc(chan_count*sizeof(double)); // most recent reading
-
 
   if (eventType == DE_ON_DATA_AVAILABLE) {
     unsigned long sample_index = total_samples % scanEventParameters->buffer_size;

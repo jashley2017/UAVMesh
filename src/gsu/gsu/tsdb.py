@@ -80,20 +80,6 @@ class GroundStation(Node):
             msg_stamp = self._unpack_bytelist(msg.data[1:9], bytesize=8, vartype='d')
             # self.get_logger().info(f"current timestamps: MSG:{msg_stamp}")
             roundtrip_time = ts - msg_stamp
-            if roundtrip_time > 0:
-                # time and planeID here are used to relate this delay to specific measurement
-                samples = [
-                        {
-                            "measurement": "time_lag", 
-                            "tags": {
-                                "PlaneID": msg.dev_addr
-                                },
-                            "time": int(msg_stamp*1000), # ms precision 
-                            "fields": {
-                                "Time_Difference": roundtrip_time,
-                                }
-                        }
-                ]
             if msg.data[0] == self.pth_code:
                 samples.append(
                         {
@@ -108,7 +94,8 @@ class GroundStation(Node):
                                 "Temperature2": self._unpack_bytelist(msg.data[15:19]),
                                 "Temperature3": self._unpack_bytelist(msg.data[19:23]),
                                 "Pressure": self._unpack_bytelist(msg.data[23:27]), 
-                                "Humidity": self._unpack_bytelist(msg.data[27:31])
+                                "Humidity": self._unpack_bytelist(msg.data[27:31]),
+                                "TimeLag": roundtrip_time
                             }
                         }
                 )
@@ -123,7 +110,8 @@ class GroundStation(Node):
                             "fields": {
                                 "Latitude": self._unpack_bytelist(msg.data[9:13]),
                                 "Longitude": self._unpack_bytelist(msg.data[13:17]),
-                                "Altitude": self._unpack_bytelist(msg.data[17:21])
+                                "Altitude": self._unpack_bytelist(msg.data[17:21]),
+                                "TimeLag": roundtrip_time
                             }
                         }
                 )

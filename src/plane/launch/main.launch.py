@@ -7,16 +7,6 @@ import glob
 def generate_launch_description():
     node_list = [ # required nodes
             Node(
-                package="xbee_uav",
-                namespace="plane",
-                executable="radio",
-                name="xbee_radio",
-                parameters=[
-                    {"xbee_port": "/dev/xbee"},
-                    {"xbee_baud": 9600},
-                ],
-            ),
-            Node(
                 package="plane",
                 namespace="plane",
                 executable="transmitter",
@@ -32,6 +22,17 @@ def generate_launch_description():
         # key: device path to match
         # value: node description to form from matched device path
         # value[0](**value[1](matched_path)) constructs the node
+        '/dev/xbee*': (Node, lambda f: { 
+                "package":"xbee_uav",
+                "namespace":"plane",
+                "executable":"radio",
+                "name":"xbee_radio",
+                "parameters":[
+                    {"xbee_port": f},
+                    {"xbee_baud": 9600},
+                ],
+                } # doing this because we can, but multiple of these is unrealistic or needs more management
+            ),
         '/dev/gps*': (Node, lambda f: {
             "package":"gps",
             "namespace":"plane",

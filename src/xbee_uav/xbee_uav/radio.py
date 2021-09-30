@@ -28,8 +28,8 @@ class XBeeRadio(Node):
         self.device.open()
         self.device.add_data_received_callback(self.rx_callback)
         self.xnet = self.device.get_network()
-        if is_gsu:
-            self.set_aggregator()
+        # if is_gsu:
+        #     self.set_aggregator()
 
         self._publisher = self.create_publisher(Packet, 'received', 10)
         self._subscription = self.create_subscription(

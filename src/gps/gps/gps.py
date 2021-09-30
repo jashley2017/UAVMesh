@@ -55,7 +55,7 @@ class Gps(Node):
             callback=self.timepulse_callback, bouncetime=50)
 
     def timepulse_callback(self, channel):
-        self.get_logger().info(f"{time.time()} Timepulse triggered.")
+        self.get_logger().info(f"{time.time()} Timepulse trigger")
         gps_msg = NavSatFix()
         timeref_msg = TimeReference()
         msg_hdr = Header()
@@ -77,7 +77,8 @@ class Gps(Node):
                 fix_stat = NavSatStatus()
 
                 if ubx.fixType == 0:
-                    continue
+                    self.get_logger().warning(f"No fix yet.")
+                    break
 
                 fix_stat.service = SERVICE_GPS
 
@@ -96,7 +97,9 @@ class Gps(Node):
 
                 self.get_logger().info(f"Publishing gps message: ({timeref_msg.header.stamp.sec}.{timeref_msg.header.stamp.nanosec}): ({gps_msg.latitude}, {gps_msg.longitude}, {gps_msg.altitude})")
                 return
-            ubx = self.ubp.read()
+            else: 
+                self.get_logger().info(f"Other GPS MSG: {(ubx.msg_cls + ubx.msg_id)}")
+                ubx = self.ubp.read()
 
     def _gen_timestamp_from_utc(self, ubx):
         second = ubx.second

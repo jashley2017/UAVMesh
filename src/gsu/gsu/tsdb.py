@@ -80,38 +80,22 @@ class GroundStation(Node):
             msg_stamp = self._unpack_bytelist(msg.data[1:9], bytesize=8, vartype='d')
             # self.get_logger().info(f"current timestamps: MSG:{msg_stamp}")
             roundtrip_time = ts - msg_stamp
-            if roundtrip_time > 0:
-                samples = [
-                        {
-                            "measurement": "time_lag", 
-                            "tags": {
-                                "host": "groundstation",
-                                "region": "us-east"
-                                },
-                            "time": int(ts*1000), # ms precision 
-                            "fields": {
-                                "Time_Difference": roundtrip_time,
-                                }
-                        }
-                ]
             if msg.data[0] == self.pth_code:
                 samples.append(
                         {
                             "measurement": "pth",
                             "tags": {
-                                "host": "groundstation",
-                                "region": "us-east"
+                                "PlaneID": msg.dev_addr
                                 },
                             "time": int(msg_stamp*1000),
                             "fields": {
-                                # TODO: units
-                                "PlaneID": msg.dev_addr,
                                 "Serial": struct.unpack('i', struct.pack('4c', *msg.data[9:11], b'\x00', b'\x00'))[0],
                                 "Temperature1": self._unpack_bytelist(msg.data[11:15]),
                                 "Temperature2": self._unpack_bytelist(msg.data[15:19]),
                                 "Temperature3": self._unpack_bytelist(msg.data[19:23]),
                                 "Pressure": self._unpack_bytelist(msg.data[23:27]), 
-                                "Humidity": self._unpack_bytelist(msg.data[27:31])
+                                "Humidity": self._unpack_bytelist(msg.data[27:31]),
+                                "TimeLag": roundtrip_time
                             }
                         }
                 )
@@ -120,15 +104,14 @@ class GroundStation(Node):
                         {
                             "measurement": "gps",
                             "tags": {
-                                "host": "groundstation",
-                                "region": "us-east"
+                                "PlaneID": msg.dev_addr
                                 },
                             "time": int(msg_stamp*1000),
                             "fields": {
-                                "PlaneID": msg.dev_addr,
                                 "Latitude": self._unpack_bytelist(msg.data[9:13]),
                                 "Longitude": self._unpack_bytelist(msg.data[13:17]),
-                                "Altitude": self._unpack_bytelist(msg.data[17:21])
+                                "Altitude": self._unpack_bytelist(msg.data[17:21]),
+                                "TimeLag": roundtrip_time
                             }
                         }
                 )

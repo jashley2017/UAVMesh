@@ -75,7 +75,7 @@ def generate_launch_description():
             "emulate_tty":True,
         })
     }
-    for dev_path, node_construct in sensor_descriptions:
+    for dev_path, node_construct in sensor_descriptions.items():
         for dev_path_match in glob.glob(dev_path):
             # Inject this found path into the parameters
             # and then pass the parameters to the correct

@@ -33,9 +33,11 @@ sudo ./devices/first_setup.sh {device_name}
 	- RPi.GPIO
 	- influxdb (gsu)
 4. Clone repository
+4. a. Update submodules (WARNING: only do so as a part of the FMU setup)
 5. Build ros2
 ```
 colcon build
+# useful variant for excluding PX4: colcon build --packages-skip-regex px4_.*
 source install/setup.bash
 ```
 6. Copy device rules for device aliases

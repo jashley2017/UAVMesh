@@ -10,12 +10,12 @@
 
 ## Companion Computer Setup
 1. In your ROS2 workspace add submodules for px4_ros_com and px4_msgs to your source. 
-2. Build the workspace using colcon build. 
-3. This should install the nodes as well as the micrortps_agent.
-4. Additional information for this setup can be found [here]('https://dev.px4.io/v1.11_noredirect/en/middleware/micrortps.html#px4_ros_com')
+2. Install FastRTPS (DDS) following the guide [here]('https://docs.px4.io/v1.12/en/ros/ros2_comm.html#install-fast-dds').
+3. Build the workspace and subsequent nodes using colcon build. 
+4. Additional information for this setup can be found [here]('https://dev.px4.io/v1.11_noredirect/en/middleware/micrortps.html#px4_ros_com').
 
 ## FMU device setup
-1. On a seperate development computer (not the companion computer), downlaod the PX4-Autopilot source code.
+1. On a separate development computer (not the companion computer), download the PX4-Autopilot source code.
 ```sh
 git clone https://github.com/PX4/PX4-Autopilot.git --recursive
 cd PX4-Autopilot
@@ -67,7 +67,7 @@ ros2 launch px4_ros_com sensor_combined_listener.launch.py
 ## Developers Notes
 * The majority of this guide was derived from [PX4 User Guide]('https://docs.px4.io/') and experimentation.
 * I would not recommend attempting this without the following skills:
-	- Interpereting make/compiler errors.
+	- Interpreting make/compiler errors.
 	- Understanding of a live Linux Environment.
 	- Decent understanding of ROS2 and DDS'es
 	- Patience and googling ability.

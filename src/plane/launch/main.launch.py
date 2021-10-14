@@ -22,17 +22,15 @@ def generate_launch_description():
         # key: device path to match
         # value: node description to form from matched device path
         # value[0](**value[1](matched_path)) constructs the node
-        '/dev/xbee*': (Node, lambda f: { 
-                "package":"xbee_uav",
-                "namespace":"plane",
-                "executable":"radio",
-                "name":"xbee_radio",
-                "parameters":[
-                    {"xbee_port": f},
-                    {"xbee_baud": 9600},
-                ],
-                } # doing this because we can, but multiple of these is unrealistic or needs more management
-            ),
+        '/dev/xbee*': (Node, lambda f: {
+            "package":"xbee_uav",
+            "namespace":"plane",
+            "executable":"radio",
+            "name":"xbee_radio",
+            "parameters":[
+                {"xbee_port": f},
+                {"xbee_baud": 9600},
+            ]}), # dont have more than one radio
         '/dev/gps*': (Node, lambda f: {
             "package":"gps",
             "namespace":"plane",
@@ -51,8 +49,7 @@ def generate_launch_description():
             "parameters":[
                 {"pth_top": "pth_msg"},
                 {"pth_port": f},
-            ],
-        }),
+            ]}),
         '/dev/daq*': (ComposableNodeContainer, lambda f: {
             "name":"uldaq_container",
             "namespace":"plane",

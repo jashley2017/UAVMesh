@@ -4,3 +4,6 @@
 [submodule "src/px4_msgs"]
 	path = src/px4_msgs
 	url = https://github.com/PX4/px4_msgs.git
+[submodule "src/ros1_bridge"]
+	path = src/ros1_bridge
+	url = https://github.com/ros2/ros1_bridge.git

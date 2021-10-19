@@ -7,7 +7,6 @@ import os
 import pynmea2
 from multiprocessing import Process, Value
 
-
 # ros packages
 import rclpy
 from rclpy.node import Node

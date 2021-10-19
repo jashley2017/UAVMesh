@@ -3,20 +3,25 @@ from launch_ros.actions import Node
 from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
 import glob
+import os
+from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
+    config = os.path.join(
+        get_package_share_directory('plane'),
+        'config',
+        'config.yaml'
+    )
     node_list = [ # required nodes
-            Node(
-                package="plane",
-                namespace="plane",
-                executable="transmitter",
-                name="msg_transmitter",
-                parameters=[
-                    {"pth_top": "pth_msg"},
-                    {"gps_top": "gps_fix"},
-                    {"gcu_addr": "13A20041D17945"},
-                ],
-            )
+        Node(
+            package="plane",
+            namespace="plane",
+            executable="transmitter",
+            name="msg_transmitter",
+            parameters=[
+                config
+            ],
+        )
     ]
     sensor_descriptions = {
         # key: device path to match

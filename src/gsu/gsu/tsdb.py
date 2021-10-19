@@ -21,8 +21,8 @@ class GroundStation(Node):
         self.declare_parameter('time_topic', 'gps_time')
 
         self._subscription = self.create_subscription(
-           TimeReference, 
-           self.get_parameter('time_topic').value, 
+           TimeReference,
+           self.get_parameter('time_topic').value,
            self.timestamp_creator,
         1)
         self.rel_ts1 = None
@@ -93,7 +93,7 @@ class GroundStation(Node):
                                 "Temperature1": self._unpack_bytelist(msg.data[11:15]),
                                 "Temperature2": self._unpack_bytelist(msg.data[15:19]),
                                 "Temperature3": self._unpack_bytelist(msg.data[19:23]),
-                                "Pressure": self._unpack_bytelist(msg.data[23:27]), 
+                                "Pressure": self._unpack_bytelist(msg.data[23:27]),
                                 "Humidity": self._unpack_bytelist(msg.data[27:31]),
                                 "TimeLag": roundtrip_time
                             }

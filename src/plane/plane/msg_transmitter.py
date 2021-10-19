@@ -8,22 +8,29 @@ from sensor_msgs.msg import NavSatFix
 from xbee_interfaces.msg import Packet
 from sensor_msgs.msg import TimeReference
 from uldaq_msgs.msg import Measurement
-
+from pydoc import locate
 
 class MsgTransmitter(Node):
     def __init__(self):
         super().__init__("msg_transmitter")
 
-        self.declare_parameter("pth_top", "pth_msg")
-        self.declare_parameter("daq_top", "uldaq_measurement")
-        self.declare_parameter("gps_top", "gps_fix")
-        # XBee node MAC address corresponding to the node on the ground station
-        self.declare_parameter("gcu_addr", "13A20041D17945")
-        self.declare_parameter("time_topic", "gps_time")
-
-        pth_top = self.get_parameter("pth_top").value
-        daq_top = self.get_parameter("daq_top").value
-        gps_top = self.get_parameter("gps_top").value
+        self.declare_parameters(namespace='',
+                                parameters=[("sensor_topics", # assume we only have gps
+                                             {
+                                                 "topic": "gps_fix",
+                                                 "msg_type": "sensor_msgs.msg.NavSatFix",
+                                                 "sensor_code": "2",
+                                                 "attributes": {
+                                                     "longitude": [4, 'f'],
+                                                     "latitude": [4, 'f'],
+                                                     "altitude": [4, 'f']
+                                                 }
+                                             }
+                                            ),
+                                            ("gcu_addr", "13A20041D17945"),
+                                            ("time_topic", "gps_time")
+                                           ])
+        sensor_topics = self.get_parameter("sensor_topics").value
         self.gcu_addr = self.get_parameter("gcu_addr").value
 
         # subscribe to each sensor, publish raw bytes to the transmitter
@@ -33,18 +40,20 @@ class MsgTransmitter(Node):
             self.timestamp_creator,
             1,
         )
-        self._gps_sub = self.create_subscription(
-            NavSatFix, gps_top, self.gps_callback, 1
-        )
-        self._pth_sub = self.create_subscription(Pth, pth_top, self.pth_callback, 1)
-        self._daq_sub = self.create_subscription(Measurement, daq_top, self.daq_callback, 1)
         self.tx_pub = self.create_publisher(Packet, "transmit", 10)
+        self._subs = []
+
+        for topic in sensor_topics:
+            self._subs.append(
+                self.create_subscription(
+                    locate(topic["msg_type"]),
+                    topic["topic"],
+                    self._generate_callback(topic)
+                )
+            )
 
         # setup management variables
-        self.gps_code = b"1"
-        self.pth_code = b"2"
-        self.daq_code = b"3"
-
+        self.gps_code = "1"
         self.lock = False
         self.rel_ts1 = None
         self.rel_ts2 = None
@@ -86,70 +95,32 @@ class MsgTransmitter(Node):
     def _create_bytelist(var, bytelen=4, vartype="f"):
         return list(struct.unpack(str(bytelen) + "c", struct.pack(vartype, var)))
 
-    def gps_callback(self, msg):
-        '''
-        turn gps message into a bytestring
-        msg is NavSatFix type
-        '''
-        msg_data = [self.gps_code]
-        ts = float(msg.header.stamp.sec) + float(msg.header.stamp.nanosec) / 1000000000
-        msg_data += self._create_bytelist(ts, bytelen=8, vartype="d")
-        msg_data += self._create_bytelist(msg.latitude)
-        msg_data += self._create_bytelist(msg.longitude)
-        msg_data += self._create_bytelist(msg.altitude)
-        tx_msg = Packet()
-        tx_msg.data = msg_data
-        tx_msg.dev_addr = self.gcu_addr
-        tx_msg.is_broadcast = False
-        self.tx_pub.publish(tx_msg)
-
-    def pth_callback(self, msg):
-        '''
-        turn the pth message into a bytestring
-        msg type is Pth
-        '''
-        msg_data = [self.pth_code]
-        pth_time = (
-            float(msg.header.stamp.sec) + float(msg.header.stamp.nanosec) / 1000000000
-        )
-        if self.rel_ts1:
-            ts = self.interpolate_utc(
-                pth_time, self.rel_ts1, self.rel_ts2, self.gps_ts1, self.gps_ts2
+    def _generate_callback(self, topic):
+        def callback(self, msg):
+            '''
+            turn sensor message into a transmittable bytearray
+            '''
+            msg_data = [bytes(topic["sensor_code"], encoding="ascii")]
+            sample_time = (
+                float(msg.header.stamp.sec) + float(msg.header.stamp.nanosec) / 1000000000
             )
-        else:
-            return
-        msg_data += self._create_bytelist(ts, bytelen=8, vartype="d")
-        msg_data += self._create_bytelist(msg.serial, bytelen=4, vartype="i")[0:2]
-        msg_data += self._create_bytelist(msg.temp1)
-        msg_data += self._create_bytelist(msg.temp2)
-        msg_data += self._create_bytelist(msg.temp3)
-        msg_data += self._create_bytelist(msg.pressure)
-        msg_data += self._create_bytelist(msg.humidity)
-        tx_msg = Packet()
-        tx_msg.data = msg_data
-        tx_msg.dev_addr = self.gcu_addr
-        tx_msg.is_broadcast = False
-        self.tx_pub.publish(tx_msg)
-
-    def daq_callback(self, msg):
-        msg_data = [self.daq_code]
-        daq_time = (
-            float(msg.header.stamp.sec) + float(msg.header.stamp.nanosec) / 1000000000
-        )
-        if self.rel_ts1:
-            ts = self.interpolate_utc(
-                daq_time, self.rel_ts1, self.rel_ts2, self.gps_ts1, self.gps_ts2
-            )
-        else:
-            return
-        msg_data += self._create_bytelist(ts, bytelen=8, vartype="d")
-        for sig in msg.data:
-            msg_data += self._create_bytelist(sig, bytelen=8, vartype="f")
-        tx_msg = Packet()
-        tx_msg.data = msg_data
-        tx_msg.dev_addr = self.gcu_addr
-        tx_msg.is_broadcast = False
-        self.tx_pub.publish(tx_msg)
+            if topic["sensor_code"] == self.gps_code:
+                ts = sample_time
+            elif self.rel_ts1:
+                ts = self.interpolate_utc(
+                    sample_time, self.rel_ts1, self.rel_ts2, self.gps_ts1, self.gps_ts2
+                )
+            else:
+                return
+            msg_data += self._create_bytelist(ts, bytelen=8, vartype="d")
+            for attr, spec in topic["attributes"].items():
+                msg_data += self._create_bytelist(getattr(msg, attr), bytelen=spec[0], vartype=spec[1])
+            tx_msg = Packet()
+            tx_msg.data = msg_data
+            tx_msg.dev_addr = self.gcu_addr
+            tx_msg.is_broadcast = False
+            self.tx_pub.publish(tx_msg)
+        return callback
 
 def main(args=None):
     rclpy.init(args=args)

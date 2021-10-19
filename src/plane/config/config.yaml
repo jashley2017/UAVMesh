@@ -1,0 +1,63 @@
+plane:
+  sensor_topics:
+    - attributes:
+        humidity:
+        - 4
+        - f
+        pressure:
+        - 4
+        - f
+        serial:
+        - 4
+        - i
+        temp1:
+        - 4
+        - f
+        temp2:
+        - 4
+        - f
+        temp3:
+        - 4
+        - f
+      msg_type: environ_msgs.msg.Pth
+      sensor_code: '2'
+      topic: pth_msg
+    - attributes:
+        data:
+        - 64
+        - dddddddd
+      msg_type: uldaq_msgs.msg.Measurement
+      sensor_code: '3'
+      topic: uldaq_measurement
+    - attributes:
+        altitude:
+        - 4
+        - f
+        latitude:
+        - 4
+        - f
+        longitude:
+        - 4
+        - f
+      msg_type: sensor_msgs.msg.NavSatFix
+      sensor_code: '1'
+      topic: gps_fix
+    - attributes:
+        wind_angle:
+        - 4
+        - f
+        wind_speed:
+        - 4
+        - f
+      msg_type: environ_msgs.msg.NMEA_MWV
+      sensor_code: '4'
+      topic: wind_speed
+    - attributes:
+        temp:
+        - 4
+        - f
+      msg_type: environ_msgs.msg.NMEA_XDR
+      sensor_code: '5'
+      topic: air_temp
+  gcu_addr: 13A20041D17945
+  time_topic: gps_time

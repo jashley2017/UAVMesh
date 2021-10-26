@@ -55,6 +55,16 @@ def generate_launch_description():
                 {"pth_top": "pth_msg"},
                 {"pth_port": f},
             ]}),
+        '/dev/sonic*': (Node, lambda f: {
+            "package":"anemometer",
+            "namespace":"plane",
+            "executable": "sonic_node",
+            "name": "anemometer",
+            "parameters": [
+                {"sonic_port":f},
+                {"sonic_baud": 4800},
+            ]
+        }),
         '/dev/daq*': (ComposableNodeContainer, lambda f: {
             "name":"uldaq_container",
             "namespace":"plane",

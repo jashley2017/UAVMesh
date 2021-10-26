@@ -20,7 +20,7 @@ AN4_PORT = '/dev/sonic4'
 
 class Anemometer(Node):
     def __init__(self):
-        super().__init__('anemometer') # Nnde('anemometer')
+        super().__init__('anemometer') # Node('anemometer')
         self.wind_pub = self.create_publisher(NMEA_MWV, 'wind_speed', 10)
         self.temp_pub = self.create_publisher(NMEA_XDR, 'air_temp', 10)
         # parameters come from launch file, otherwise take default
@@ -57,6 +57,7 @@ class Anemometer(Node):
                     else:
                         self.get_logger().warning(f"Got unknown NMEA XDR message: {parsed_nmea.id}")
                         continue
+                    self.temp_pub.publish(ros_msg)
                 elif (parsed_nmea.sentence_type == "MWV"):
                     ros_msg = NMEA_MWV()
                     ros_msg.header.stamp.sec = int(sample_time)
@@ -65,6 +66,7 @@ class Anemometer(Node):
                     ros_msg.wind_speed = parsed_nmea.wind_speed
                     ros_msg.wind_speed_units = parsed_nmea.wind_speed_units
                     ros_msg.wind_angle = parsed_nmea.wind_angle
+                    self.wind_pub(ros_msg)
                 else:
                     self.get_logger().warning(f"Got unknown NMEA message: {parsed_nmea.sentence_type}")
                     continue

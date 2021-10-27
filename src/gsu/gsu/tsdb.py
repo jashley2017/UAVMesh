@@ -17,8 +17,8 @@ class GroundStation(Node):
                 self.rx_callback,
                 10)
         self.declare_parameter('outfile', '~/outfile.log')
-
         self.declare_parameter('time_topic', 'gps_time')
+        self.declare_parameter('sensor_topics', {})
 
         self._subscription = self.create_subscription(
            TimeReference,
@@ -29,6 +29,7 @@ class GroundStation(Node):
         self.rel_ts2 = None
         self.gps_ts1 = None
         self.gps_ts2 = None
+        self.lock = False
 
         user = 'ubuntu'
         password = 'piplane2021'
@@ -36,9 +37,12 @@ class GroundStation(Node):
         host = 'localhost'
         port = 8086
         self.client = InfluxDBClient(host, port, user, password, dbname)
+
+        # sensor_topics
+
+        self.sensor_topics = self.get_parameter('sensor_topics').value
         self.gps_code = b'1'
         self.pth_code = b'2'
-        self.lock = False
 
     def timestamp_creator(self, time_msg):
         self.lock = True
@@ -78,43 +82,30 @@ class GroundStation(Node):
         samples = []
         if msg.data[0] == self.gps_code or msg.data[0] == self.pth_code:
             msg_stamp = self._unpack_bytelist(msg.data[1:9], bytesize=8, vartype='d')
-            # self.get_logger().info(f"current timestamps: MSG:{msg_stamp}")
             roundtrip_time = ts - msg_stamp
-            if msg.data[0] == self.pth_code:
-                samples.append(
-                        {
-                            "measurement": "pth",
-                            "tags": {
-                                "PlaneID": msg.dev_addr
-                                },
-                            "time": int(msg_stamp*1000),
-                            "fields": {
-                                "Serial": struct.unpack('i', struct.pack('4c', *msg.data[9:11], b'\x00', b'\x00'))[0],
-                                "Temperature1": self._unpack_bytelist(msg.data[11:15]),
-                                "Temperature2": self._unpack_bytelist(msg.data[15:19]),
-                                "Temperature3": self._unpack_bytelist(msg.data[19:23]),
-                                "Pressure": self._unpack_bytelist(msg.data[23:27]),
-                                "Humidity": self._unpack_bytelist(msg.data[27:31]),
-                                "TimeLag": roundtrip_time
-                            }
-                        }
-                )
-            else:
-                samples.append(
-                        {
-                            "measurement": "gps",
-                            "tags": {
-                                "PlaneID": msg.dev_addr
-                                },
-                            "time": int(msg_stamp*1000),
-                            "fields": {
-                                "Latitude": self._unpack_bytelist(msg.data[9:13]),
-                                "Longitude": self._unpack_bytelist(msg.data[13:17]),
-                                "Altitude": self._unpack_bytelist(msg.data[17:21]),
-                                "TimeLag": roundtrip_time
-                            }
-                        }
-                )
+
+            sensor_config = self.sensor_topics[msg.data[0]]
+
+            byte_index = 9
+            tags = {"PlaneID": msg.dev_addr}
+            fields = {}
+
+            for field in sensor_config["attribute_order"]:
+                field_size = sensor_config["attributes"][field][0]
+                field_type
+                if field == "serial":
+                    tags["serial"] = struct.unpack('i', struct.pack('4c', *msg.data[byte_index: byte_index+field_size], b'\x00', b'\x00'))[0]
+                else:
+                    fields[field] = self._unpack_bytelist(msg.data[byte_index: byte_index+field_size], bytesize=field_size, var_type=field_type)
+                byte_index += field_size
+
+            fields["timelag"] = roundtrip_time
+            samples =  [{
+                    "measurement": sensor_config["topic"],
+                    "tags": tags,
+                    "time": int(msg_stamp*1000),
+                    "fields": fields
+            }]
         self.client.write_points(samples, time_precision='ms')
 
 def main(args=None):

@@ -17,14 +17,16 @@ class MsgTransmitter(Node):
         self.declare_parameters(namespace='',
                                 parameters=[("sensor_topics", # assume we only have gps
                                              {
-                                                 "topic": "gps_fix",
-                                                 "msg_type": "sensor_msgs.msg.NavSatFix",
-                                                 "sensor_code": "2",
-                                                 "attributes": {
-                                                     "longitude": [4, 'f'],
-                                                     "latitude": [4, 'f'],
-                                                     "altitude": [4, 'f']
-                                                 }
+                                                "2":{
+                                                         "topic": "gps_fix",
+                                                         "msg_type": "sensor_msgs.msg.NavSatFix",
+                                                         "attribute_order": ["longitude", "latitude", "altitude"],
+                                                         "attributes": {
+                                                             "longitude": [4, 'f'],
+                                                             "latitude": [4, 'f'],
+                                                             "altitude": [4, 'f']
+                                                         }
+                                                     }
                                              }
                                             ),
                                             ("gcu_addr", "13A20041D17945"),
@@ -43,12 +45,12 @@ class MsgTransmitter(Node):
         self.tx_pub = self.create_publisher(Packet, "transmit", 10)
         self._subs = []
 
-        for topic in sensor_topics:
+        for sensor_code, topic in sensor_topics.items():
             self._subs.append(
                 self.create_subscription(
                     locate(topic["msg_type"]),
                     topic["topic"],
-                    self._generate_callback(topic)
+                    self._generate_callback(sensor_code, topic)
                 )
             )
 
@@ -95,16 +97,16 @@ class MsgTransmitter(Node):
     def _create_bytelist(var, bytelen=4, vartype="f"):
         return list(struct.unpack(str(bytelen) + "c", struct.pack(vartype, var)))
 
-    def _generate_callback(self, topic):
+    def _generate_callback(self, sensor_code, topic):
         def callback(self, msg):
             '''
             turn sensor message into a transmittable bytearray
             '''
-            msg_data = [bytes(topic["sensor_code"], encoding="ascii")]
+            msg_data = [bytes(sensor_code, encoding="ascii")]
             sample_time = (
                 float(msg.header.stamp.sec) + float(msg.header.stamp.nanosec) / 1000000000
             )
-            if topic["sensor_code"] == self.gps_code:
+            if sensor_code == self.gps_code:
                 ts = sample_time
             elif self.rel_ts1:
                 ts = self.interpolate_utc(
@@ -113,8 +115,13 @@ class MsgTransmitter(Node):
             else:
                 return
             msg_data += self._create_bytelist(ts, bytelen=8, vartype="d")
-            for attr, spec in topic["attributes"].items():
-                msg_data += self._create_bytelist(getattr(msg, attr), bytelen=spec[0], vartype=spec[1])
+
+            # construct your bytelist from ros msg attributes 
+            for attr in topic["attribute_order"]:
+                bytelen = topic["attributes"][attr][0]
+                vartype = topic["attributes"][attr][1]
+                msg_data += self._create_bytelist(getattr(msg, attr), bytelen=bytelen, vartype=vartype)
+
             tx_msg = Packet()
             tx_msg.data = msg_data
             tx_msg.dev_addr = self.gcu_addr

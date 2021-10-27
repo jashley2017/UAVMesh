@@ -1,14 +1,16 @@
-plane:
-  sensor_topics:
-    - attributes:
-        humidity:
-        - 4
-        - f
+/**: # give this to gcu and plane namespaces 
+  sensor_topics: # topic specification for each sensor type
+    '2': # sensor code
+      attribute_order: [serial, temp1, temp2, temp3, pressure, humidity] # strict ordering of attributes for serialization
+      attributes: 
+        humidity: # attribute key
+        - 4 # byte size
+        - f # byte type (see python struct)
         pressure:
         - 4
         - f
-        serial:
-        - 4
+        serial: # serial is a special code to differential sensor information from the same sensor types.
+        - 2
         - i
         temp1:
         - 4
@@ -19,17 +21,19 @@ plane:
         temp3:
         - 4
         - f
-      msg_type: environ_msgs.msg.Pth
-      sensor_code: '2'
-      topic: pth_msg
-    - attributes:
+      msg_type: environ_msgs.msg.Pth # ros msg type
+      topic: pth_msg # ros topic msg sensor publishes to
+    '3':
+      attribute_order: [data]
+      attributes:
         data:
         - 64
         - dddddddd
       msg_type: uldaq_msgs.msg.Measurement
-      sensor_code: '3'
       topic: uldaq_measurement
-    - attributes:
+    '1':
+      attribute_order: [longitude, latitude, altitude]
+      attributes:
         altitude:
         - 4
         - f
@@ -40,9 +44,10 @@ plane:
         - 4
         - f
       msg_type: sensor_msgs.msg.NavSatFix
-      sensor_code: '1'
       topic: gps_fix
-    - attributes:
+    '4':
+      attribute_order: [wind_angle, wind_speed]
+      attributes:
         wind_angle:
         - 4
         - f
@@ -52,12 +57,13 @@ plane:
       msg_type: environ_msgs.msg.NMEA_MWV
       sensor_code: '4'
       topic: wind_speed
-    - attributes:
+    '5':
+      attribute_order: [temp]
+      attributes:
         temp:
         - 4
         - f
       msg_type: environ_msgs.msg.NMEA_XDR
-      sensor_code: '5'
       topic: air_temp
   gcu_addr: 13A20041D17945
   time_topic: gps_time

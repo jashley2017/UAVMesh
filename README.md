@@ -31,7 +31,7 @@ sudo ./devices/first_setup.sh {device_name}
 pip install virtualenv
 python3 -m venv env
 . env/bin/activate; # NOTE: this should be your development and running environment
-touch ./venv/COLCON_IGNORE
+touch ./env/COLCON_IGNORE
 pip install -r requirements.txt 
 ```
 4. Clone repository

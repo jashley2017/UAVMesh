@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import launch
 from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode

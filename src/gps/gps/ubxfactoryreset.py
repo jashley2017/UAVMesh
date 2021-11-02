@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 Example implementation of a simple UBX receiver configuration utility
 

@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 Example implementation of a threaded UBXMessage streamer
 

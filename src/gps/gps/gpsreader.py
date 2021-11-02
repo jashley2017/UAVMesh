@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 import digitalio
 import board
 from io import BufferedReader

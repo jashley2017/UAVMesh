@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from influxdb import InfluxDBClient
 import rclpy
 import struct

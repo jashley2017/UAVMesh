@@ -20,18 +20,20 @@ This implementation is being created to support the projects under the following
 * The C94-M8P gpio pin 6 (PPS) connects to Pi GPIO26
 
 ### Initial Pi setup
-
-1. If you are a cloned device, run the initial setup script to ensure no network confusion
+0. CD into repository
+1. If you are a cloned device, run the initial setup script to ensure no network confusion.
 ```bash 
 sudo ./devices/first_setup.sh {device_name}
 ```
 2. Install ROS2
 3. Install Python Dependencies
-	- TODO
-	- pyubx2
-	- XBee
-	- RPi.GPIO
-	- influxdb (gsu)
+```
+pip install virtualenv
+python3 -m venv env
+. env/bin/activate; # NOTE: this should be your development and running environment
+touch ./venv/COLCON_IGNORE
+pip install -r requirements.txt 
+```
 4. Clone repository
 4. a. Update submodules (WARNING: only do so as a part of the FMU setup)
 5. Build ros2

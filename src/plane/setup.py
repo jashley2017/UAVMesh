@@ -24,7 +24,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'transmitter = plane.msg_transmitter:main'
+            'transmitter = plane.msg_transmitter:main',
         ],
     },
 )

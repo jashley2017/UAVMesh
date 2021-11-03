@@ -59,7 +59,12 @@ def generate_launch_description():
 	'/dev/sonic*': (Node, lambda f: {
 	    "package": "iMET_data",
 	    "namespace": "plane",
-	    "executable": ""#TODO TODO TODO
+	    "executable": "imet_transmitter",#TODO: double check
+	    "name": "iMET_topic",
+	    "parameters": [
+		{"iMET_port":f},
+		{"iMET_baud": 9600},
+	    ] 
 
         '/dev/sonic*': (Node, lambda f: {
             "package":"anemometer",

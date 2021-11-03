@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+		'imet_transmitter = iMET.iMET_ros2_proto:main'
         ],
     },
 )

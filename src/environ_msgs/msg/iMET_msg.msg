@@ -1,0 +1,9 @@
+std_msgs/Header header
+int pressure
+int temp
+int rel_humidity
+int humidity_temp
+int longitude
+int latitude
+int altitude
+int num_sat

@@ -24,6 +24,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 	"msg/Pth.msg" 
   "msg/NMEA_XDR.msg"
   "msg/NMEA_MWV.msg"
+  "msg/iMET_msg.msg"
 	DEPENDENCIES builtin_interfaces std_msgs
 )
 # uncomment the following section in order to fill in

@@ -56,6 +56,11 @@ def generate_launch_description():
                 {"pth_top": "pth_msg"},
                 {"pth_port": f},
             ]}),
+	'/dev/sonic*': (Node, lambda f: {
+	    "package": "iMET_data",
+	    "namespace": "plane",
+	    "executable": ""#TODO TODO TODO
+
         '/dev/sonic*': (Node, lambda f: {
             "package":"anemometer",
             "namespace":"plane",

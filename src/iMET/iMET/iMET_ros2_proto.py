@@ -7,10 +7,10 @@ import sys
 import rclpy
 from rclpy.node import Node
 from environ_msgs.msg import iMET_msg
+from networked_sensor.networked_sensor import Sensor # TODO: need sensor package
 
 
-
-class iMET(Node):
+class iMET(Sensor):
 	def __init__(self):
 		super().__init__('iMET')
 		self.declare_parameter('iMET_topic', 'iMET_data')

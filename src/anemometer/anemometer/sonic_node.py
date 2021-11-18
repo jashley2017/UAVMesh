@@ -10,6 +10,7 @@ from multiprocessing import Process, Value
 # ros packages
 import rclpy
 from rclpy.node import Node
+from networked_sensor.networked_sensor import Sensor # TODO: need sensor package
 from environ_msgs.msg import NMEA_XDR, NMEA_MWV
 
 AN1_PORT = '/dev/sonic1'
@@ -18,7 +19,7 @@ AN3_PORT = '/dev/sonic3'
 AN4_PORT = '/dev/sonic4'
 
 
-class Anemometer(Node):
+class Anemometer(Sensor):
     def __init__(self):
         super().__init__('anemometer') # Node('anemometer')
         self.wind_pub = self.create_publisher(NMEA_MWV, 'wind_speed', 10)

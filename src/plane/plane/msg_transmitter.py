@@ -3,36 +3,18 @@ import struct
 import re
 import datetime
 import rclpy
+from networked_sensor.networked_sensor import Sensor # TODO: need sensor package
 from rclpy.node import Node
-from environ_msgs.msg import Pth
-from sensor_msgs.msg import NavSatFix
+# from environ_msgs.msg import Pth, iMET
 from xbee_interfaces.msg import Packet
-from sensor_msgs.msg import TimeReference
-from uldaq_msgs.msg import Measurement
+from sensor_msgs.msg import TimeReference, NavSatFix
+# from uldaq_msgs.msg import Measurement
 from pydoc import locate
 
 class MsgTransmitter(Node):
     def __init__(self):
         super().__init__("msg_transmitter")
 
-        self.declare_parameters(namespace='',
-                                parameters=[("sensor_topics", # assume we only have gps
-                                             {
-                                                "2":{
-                                                         "topic": "gps_fix",
-                                                         "msg_type": "sensor_msgs.msg.NavSatFix",
-                                                         "attribute_order": ["longitude", "latitude", "altitude"],
-                                                         "attributes": {
-                                                             "longitude": [4, 'f'],
-                                                             "latitude": [4, 'f'],
-                                                             "altitude": [4, 'f']
-                                                         }
-                                                     }
-                                             }
-                                            ),
-                                            ("gcu_addr", "13A20041D17945"),
-                                            ("time_topic", "gps_time")
-                                           ])
         sensor_topics = self.get_parameter("sensor_topics").value
         self.gcu_addr = self.get_parameter("gcu_addr").value
 
@@ -44,30 +26,24 @@ class MsgTransmitter(Node):
             1,
         )
         self.tx_pub = self.create_publisher(Packet, "transmit", 10)
+        self.create_subscription(Packet, "received", self.listen_incoming)
+        self.create_subscription(String, "sensor_descriptions", self._generate_callback)
         self._subs = []
-
-        for sensor_code, topic in sensor_topics.items():
-            self._subs.append(
-                self.create_subscription(
-                    locate(topic["msg_type"]),
-                    topic["topic"],
-                    self._generate_callback(sensor_code, topic)
-                )
-            )
+        self.active_codes = []
 
         # setup management variables
-        self.gps_code = "1"
-        self.lock = False
         self.rel_ts1 = None
         self.rel_ts2 = None
         self.gps_ts1 = None
         self.gps_ts2 = None
+        self.code = 1
+        # TODO is it important to get these from a config or is this good enough? for custom messages we could put a flag
+        self.gps_ts_types = [Sensor.get_msg_fullpath(NavsatFix), Sensor.get_msg_fullpath(iMET)]
 
     def timestamp_creator(self, time_msg):
         """
         store the relationship between gps time and local time to the object
         """
-        self.lock = True
         # the time_ref holds the system time
         self.rel_ts1 = self.rel_ts2
         self.rel_ts2 = (
@@ -79,7 +55,6 @@ class MsgTransmitter(Node):
             float(time_msg.header.stamp.sec)
             + float(time_msg.header.stamp.nanosec) / 1000000000
         )
-        self.lock = False
 
     @staticmethod
     def interpolate_utc(Cm, Cp1, Cp2, Tp1, Tp2):
@@ -98,37 +73,93 @@ class MsgTransmitter(Node):
     def _create_bytelist(var, bytelen=4, vartype="f"):
         return list(struct.unpack(str(bytelen) + "c", struct.pack(vartype, var)))
 
-    def _generate_callback(self, sensor_code, topic):
-        def callback(self, msg):
-            '''
-            turn sensor message into a transmittable bytearray
-            '''
-            msg_data = [bytes(sensor_code, encoding="ascii")]
-            sample_time = (
-                float(msg.header.stamp.sec) + float(msg.header.stamp.nanosec) / 1000000000
-            )
-            if sensor_code == self.gps_code:
-                ts = sample_time
-            elif self.rel_ts1:
-                ts = self.interpolate_utc(
-                    sample_time, self.rel_ts1, self.rel_ts2, self.gps_ts1, self.gps_ts2
-                )
-            else:
-                return
-            msg_data += self._create_bytelist(ts, bytelen=8, vartype="d")
+    def _generate_callback(self, desc):
+        '''
+        Parameters:
+            desc <- sensor description generated automatically
+            by a publisher inheriting the Sensor class
+        Description:
+            this method takes the publisher description and forms
+            it into the appropriate listener for the plane manager
+        '''
+        sensor_desc = yaml.safe_load(desc.data)
+        msg_type, topic = sensor_desc['subscribe']
+        conversions = sensor_desc['attributes']
 
-            # construct your bytelist from ros msg attributes 
-            for attr in topic["attribute_order"]:
-                bytelen = topic["attributes"][attr][0]
-                vartype = topic["attributes"][attr][1]
-                msg_data += self._create_bytelist(getattr(msg, attr), bytelen=bytelen, vartype=vartype)
+        sensor_code = code
+        self.code += 1
 
-            tx_msg = Packet()
-            tx_msg.data = msg_data
-            tx_msg.dev_addr = self.gcu_addr
-            tx_msg.is_broadcast = False
-            self.tx_pub.publish(tx_msg)
-        return callback
+        # Send the new sensor code as a message to GSU
+        tx_msg = Packet()
+        tx_msg.data = [struct.pack("c", bytes(c, encoding="ascii")) for c in f"0,{sensor_code},{msg_type},{topic}"]
+        tx_msg.dev_addr = self.gcu_addr
+        tx_msg.is_broadcast = False
+        self.tx_pub.publish(tx_msg)
+
+        if msg_type in self.gps_ts_types: # if the message timestamp is a gps timestamp
+            def callback(self, msg):
+                '''
+                turn sensor message into a transmittable bytearray
+                '''
+                if sensor_code in self.active_codes:
+                    msg_data = [struct.pack('B', sensor_code)]
+                    ts = (
+                        float(msg.header.stamp.sec) + float(msg.header.stamp.nanosec) / 1000000000
+                    )
+                    msg_data += _create_bytelist(ts, vartype="d")
+
+                    # construct your bytelist from ros msg attributes
+                    for attr, vartype in conversions:
+                        if isinstance(getattr(msg,attr), type(np.array([]))):
+                            msg_data += _create_bytelist(*getattr(msg, attr).tolist(), vartype=vartype)
+                        else:
+                            msg_data += _create_bytelist(getattr(msg, attr), vartype=vartype)
+
+                    tx_msg = Packet()
+                    tx_msg.data = msg_data
+                    tx_msg.dev_addr = self.gcu_addr
+                    tx_msg.is_broadcast = False
+                    self.tx_pub.publish(tx_msg)
+                else:
+                    self.get_logger().warn("Trying to publish on a sensor that has not yet been acknowledged.")
+        else:
+            def callback(self, msg):
+                '''
+                turn sensor message into a transmittable bytearray
+                '''
+                if sensor_code in self.active_codes:
+                    msg_data = [struct.pack('B', sensor_code)]
+
+                    sample_time = (
+                        float(msg.header.stamp.sec) + float(msg.header.stamp.nanosec) / 1000000000
+                    )
+                    ts = self.interpolate_utc(
+                        sample_time, self.rel_ts1, self.rel_ts2, self.gps_ts1, self.gps_ts2
+                    )
+                    msg_data += _create_bytelist(ts, vartype="d")
+
+                    # construct your bytelist from ros msg attributes
+                    for attr, vartype in conversions:
+                        if isinstance(getattr(msg,attr), type(np.array([]))):
+                            msg_data += _create_bytelist(*getattr(msg, attr).tolist(), vartype=vartype)
+                        else:
+                            msg_data += _create_bytelist(getattr(msg, attr), vartype=vartype)
+
+                    tx_msg = Packet()
+                    tx_msg.data = msg_data
+                    tx_msg.dev_addr = self.gcu_addr
+                    tx_msg.is_broadcast = False
+                    self.tx_pub.publish(tx_msg)
+                else:
+                    self.get_logger().warn("Trying to publish on a sensor that has not yet been acknowledged.")
+        self._subs.append(self.create_subscription(locate(msg_type), topic, callback))
+
+    def listen_incoming(self, rx_msg):
+        if rx_msg.data[0] == b'0':
+            # receiving an ack to a sensor
+            good_sensor_code = struct.unpack('B', rx_msg.data[1])[0]
+            self.active_codes.append(good_sensor_code)
+
 
 def main(args=None):
     rclpy.init(args=args)

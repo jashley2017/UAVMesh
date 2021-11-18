@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import rclpy
 from rclpy.node import Node
+from networked_sensor.networked_sensor import Sensor
 from environ_msgs.msg import Pth
 from sensor_msgs.msg import TimeReference
 import threading
@@ -9,7 +10,7 @@ import re
 import datetime
 from serial import Serial
 
-class PthProbe(Node):
+class PthProbe(Sensor):
     def __init__(self):
         super().__init__('pth')
         self.declare_parameter('pth_top', 'pth')

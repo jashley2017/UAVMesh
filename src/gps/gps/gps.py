@@ -3,6 +3,7 @@ import datetime
 import time
 import rclpy
 from rclpy.node import Node
+from networked_sensor.networked_sensor import Sensor
 from rclpy.time import Time
 from std_msgs.msg import Header
 from sensor_msgs.msg import NavSatFix, NavSatStatus, TimeReference
@@ -16,11 +17,11 @@ else:
     from .gpsreader import GPSReader
 
 SERVICE_GPS = 1
-SERVICE_GLONASS = 2 
+SERVICE_GLONASS = 2
 SERVICE_COMPASS = 4
 SERVICE_GALILEO = 8
 
-class Gps(Node):
+class Gps(Sensor):
     ON = b"\x00\x01\x01\x01\x00\x00"
     OFF = b"\x00\x00\x00\x00\x00\x00"
     PORT = "/dev/ttyACM0"
@@ -34,7 +35,7 @@ class Gps(Node):
         self.declare_parameter('gps_port', self.PORT)
         self.baud = self.get_parameter('gps_baud').value
         self.port = self.get_parameter('gps_port').value
-        self.ubp = GPSReader(self.port, self.baud, 
+        self.ubp = GPSReader(self.port, self.baud,
                 self.TIMEOUT, self.UBXONLY)
         if not self.ubp.connect():
             # TODO: raise custom error
@@ -48,11 +49,12 @@ class Gps(Node):
         pub_top = self.get_parameter('gps_top').value
         time_top = self.get_parameter('time_top').value
         self.fix_pub = self.create_publisher(NavSatFix, pub_top, 10)
-        self.time_pub = self.create_publisher(TimeReference, time_top, 10)
+        # we dont want the timereferences transmitted so it needs to be local (see networked_sensor.Sensor)
+        self.time_pub = self.create_local_publisher(TimeReference, time_top, 10)
         # setup the gpio
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(26, GPIO.IN, GPIO.PUD_UP)
-        GPIO.add_event_detect(26, GPIO.RISING, 
+        GPIO.add_event_detect(26, GPIO.RISING,
             callback=self.timepulse_callback, bouncetime=50)
 
     def timepulse_callback(self, channel):
@@ -98,7 +100,7 @@ class Gps(Node):
 
                 self.get_logger().info(f"Publishing gps message: ({timeref_msg.header.stamp.sec}.{timeref_msg.header.stamp.nanosec}): ({gps_msg.latitude}, {gps_msg.longitude}, {gps_msg.altitude})")
                 return
-            else: 
+            else:
                 self.get_logger().info(f"Other GPS MSG: {(ubx.msg_cls + ubx.msg_id)}")
                 ubx = self.ubp.read()
 

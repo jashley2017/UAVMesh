@@ -83,8 +83,8 @@ class GroundStation(Node):
         samples = []
         if msg.data[0] == b'0':
             # sensor spec
-            self.get_logger.info(f"Found sensor spec from {msg.dev_addr}.")
             spec_msg = str(struct.pack(str(len(msg.data)) + 'c', *msg.data), encoding='ascii')
+            self.get_logger.info(f"Found sensor spec {spec_msg} from {msg.dev_addr}.")
             _, sensor_code, msg_type, topic = spec_msg.split(',')
             if not self.codes.get(msg.dev_addr, None):
                 self.codes[msg.dev_addr] = [None]*255 # 255 max sensor type count

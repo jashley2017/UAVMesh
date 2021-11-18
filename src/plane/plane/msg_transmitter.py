@@ -94,6 +94,7 @@ class MsgTransmitter(Node):
         tx_msg.data = [struct.pack("c", bytes(c, encoding="ascii")) for c in f"0,{sensor_code},{msg_type},{topic}"]
         tx_msg.dev_addr = self.gcu_addr
         tx_msg.is_broadcast = False
+        self.get_logger().info(f"sending specification: 0,{sensor_code},{msg_type},{topic}")
         self.tx_pub.publish(tx_msg)
 
         if msg_type in self.gps_ts_types: # if the message timestamp is a gps timestamp

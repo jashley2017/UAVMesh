@@ -2,6 +2,8 @@ import struct
 import time
 import re
 from std_msgs.msg import String
+import rclpy
+from rclpy.node import Node
 
 class Sensor(Node):
     def __init__(self, node_name):

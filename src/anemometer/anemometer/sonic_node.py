@@ -11,7 +11,7 @@ from multiprocessing import Process, Value
 import rclpy
 from rclpy.node import Node
 from networked_sensor.networked_sensor import Sensor # TODO: need sensor package
-from environ_msgs.msg import NMEA_XDR, NMEA_MWV
+from environ_msgs.msg import NMEAXDR, NMEAMWV
 
 AN1_PORT = '/dev/sonic1'
 AN2_PORT = '/dev/sonic2'
@@ -22,8 +22,8 @@ AN4_PORT = '/dev/sonic4'
 class Anemometer(Sensor):
     def __init__(self):
         super().__init__('anemometer') # Node('anemometer')
-        self.wind_pub = self.create_publisher(NMEA_MWV, 'wind_speed', 10)
-        self.temp_pub = self.create_publisher(NMEA_XDR, 'air_temp', 10)
+        self.wind_pub = self.create_publisher(NMEAMWV, 'wind_speed', 10)
+        self.temp_pub = self.create_publisher(NMEAXDR, 'air_temp', 10)
         # parameters come from launch file, otherwise take default
         self.declare_parameter('sonic_port', '/dev/sonic1')
         self.declare_parameter('sonic_baud', 4800)
@@ -49,7 +49,7 @@ class Anemometer(Sensor):
                 parsed_nmea = pynmea2.parse(nmea_raw)
                 if (parsed_nmea.sentence_type == "XDR"):
                     if(parsed_nmea.id == "TempAir"):
-                        ros_msg = NMEA_XDR()
+                        ros_msg = NMEAXDR()
                         ros_msg.header.stamp.sec = int(sample_time)
                         ros_msg.header.stamp.nsec = int((sample_time - int(sample_time))*1000000000)
 
@@ -60,7 +60,7 @@ class Anemometer(Sensor):
                         continue
                     self.temp_pub.publish(ros_msg)
                 elif (parsed_nmea.sentence_type == "MWV"):
-                    ros_msg = NMEA_MWV()
+                    ros_msg = NMEAMWV()
                     ros_msg.header.stamp.sec = int(sample_time)
                     ros_msg.header.stamp.nsec = int((sample_time - int(sample_time))*1000000000)
 

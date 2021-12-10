@@ -18,7 +18,6 @@ AN2_PORT = '/dev/sonic2'
 AN3_PORT = '/dev/sonic3'
 AN4_PORT = '/dev/sonic4'
 
-
 class Anemometer(Sensor):
     def __init__(self):
         super().__init__('anemometer') # Node('anemometer')

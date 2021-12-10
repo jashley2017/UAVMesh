@@ -2,21 +2,24 @@ import struct
 import time
 import re
 from std_msgs.msg import String
+from environ_msgs.msg import Pth
 import rclpy
 from rclpy.node import Node
 
 class Sensor(Node):
+    MAX_PACKET = 70
     def __init__(self, node_name):
         super().__init__(node_name)
     def create_publisher(self, msg_type, topic, queue=10):
         '''overrides the base create publisher to send a sensor description before the information comes back'''
-        spec_pub = super().create_publisher(String, 'sensor_descriptions', 10)
-        conversions = self.parse_msg(msg_type)
-        msg_path = self.get_msg_fullpath(msg_type)
-        spec = {"subscribe": [msg_path, topic],
-                "attributes": conversions}
-        spec_str = String()
-        spec_str.data = str(spec)
+        if topic != '/parameter_events':
+            spec_pub = super().create_publisher(String, 'sensor_descriptions', 10)
+            conversions = self.parse_msg(msg_type)
+            msg_path = self.get_msg_fullpath(msg_type)
+            spec = {"subscribe": [msg_path, topic],
+                    "attributes": conversions}
+            spec_str = String()
+            spec_str.data = str(spec)
         spec_pub.publish(spec_str)
         return super().create_publisher(msg_type, topic, queue)
     def create_local_publisher(self, msg_type, topic, queue=10):
@@ -28,45 +31,50 @@ class Sensor(Node):
                 (re.compile('^byte$'), 'c'),
                 (re.compile('^char$'), 'c'),
                 (re.compile('^float32$'), 'f'),
+                (re.compile('^float$'), 'f'),
                 (re.compile('^float64$'), 'd'),
                 (re.compile('^double$'), 'd'),
-                (re.compile('^int8$'), 'i'),
-                (re.compile('^uint8$'), 'I') ,
-                (re.compile('^int8$'), 'i'),
-                (re.compile('^uint8$'), 'I') ,
-                (re.compile('^int16$'), 'i'),
-                (re.compile('^uint16$'), 'I') ,
+                (re.compile('^int8$'), 'b'),
+                (re.compile('^uint8$'), 'B') ,
+                (re.compile('^int16$'), 'h'),
+                (re.compile('^uint16$'), 'H') ,
                 (re.compile('^int32$'), 'i'),
                 (re.compile('^uint32$'), 'I') ,
-                (re.compile('^int64$'), 'i'),
-                (re.compile('^uint64$'), 'I') ,
+                (re.compile('^int64$'), 'q'),
+                (re.compile('^uint64$'), 'Q') ,
                 (re.compile('^string$'), 's'),
                 (re.compile('^byte\[(\d+)\]$'), lambda m: 'c'*m),
                 (re.compile('^char\[(\d+)\]$'), lambda m: 'c'*m),
                 (re.compile('^float32\[(\d+)\]$'), lambda m: 'f'*m),
+                (re.compile('^float\[(\d+)\]$'), lambda m: 'f'*m),
                 (re.compile('^float64\[(\d+)\]$'), lambda m: 'd'*m),
                 (re.compile('^double\[(\d+)\]$'), lambda m: 'd'*m),
-                (re.compile('^int8\[(\d+)\]$'), lambda m: 'i'*m),
-                (re.compile('^uint8\[(\d+)\]$'), lambda m: 'I'*m),
-                (re.compile('^int8\[(\d+)\]$'), lambda m: 'i'*m),
-                (re.compile('^uint8\[(\d+)\]$'), lambda m: 'I'*m),
-                (re.compile('^int16\[(\d+)\]$'), lambda m: 'i'*m),
-                (re.compile('^uint16\[(\d+)\]$'), lambda m: 'I'*m),
+                (re.compile('^int8\[(\d+)\]$'), lambda m: 'b'*m),
+                (re.compile('^uint8\[(\d+)\]$'), lambda m: 'B'*m),
+                (re.compile('^int16\[(\d+)\]$'), lambda m: 'h'*m),
+                (re.compile('^uint16\[(\d+)\]$'), lambda m: 'H'*m),
                 (re.compile('^int32\[(\d+)\]$'), lambda m: 'i'*m),
                 (re.compile('^uint32\[(\d+)\]$'), lambda m: 'I'*m),
-                (re.compile('^int64\[(\d+)\]$'), lambda m: 'i'*m),
-                (re.compile('^uint64\[(\d+)\]$'), lambda m: 'I'*m),
+                (re.compile('^int64\[(\d+)\]$'), lambda m: 'q'*m),
+                (re.compile('^uint64\[(\d+)\]$'), lambda m: 'Q'*m),
                 (re.compile('^string\[(\d+)\]$'), lambda m: 's'*m),
                 ]
         conversion_list = []
+        conversion_size = 0
         for attr in msg_type.__slots__:
             for pattern, conversion in conversions:
                 match = pattern.match(msg_type._fields_and_field_types[attr[1:]])
                 if match:
                     if len(match.groups()) > 0:
                         n = int(match.group(1))
+                        conversion_size += struct.calcsize(conversion(n))
+                        if conversion_size >= Sensor.MAX_PACKET:
+                            return conversion_list
                         conversion_list.append([attr[1:], conversion(n)])
                     else:
+                        conversion_size += struct.calcsize(conversion)
+                        if conversion_size >= Sensor.MAX_PACKET:
+                            return conversion_list
                         conversion_list.append([attr[1:], conversion])
                     break
         return conversion_list
@@ -75,9 +83,11 @@ class Sensor(Node):
         msg_class = msg.__module__ + '.' + msg.__qualname__
         return msg_class
 
-if __name__ == "__main__":
+def main():
     print("this node is an abstract node. it does not run independently")
 
+if __name__ == "__main__":
+    main()
 ''' TODO:
 this is here as a reference of the original intention for how the specification works once
 it is functional this should be removed.

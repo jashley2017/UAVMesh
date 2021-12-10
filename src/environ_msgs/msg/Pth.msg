@@ -1,8 +1,8 @@
 # Hold data extracted from the UKY PTH Probe
 std_msgs/Header header
-int32 serial
-float64 temp1
-float64 temp2
-float64 temp3
-float64 pressure
-float64 humidity
+uint8 serial
+float32 temp1
+float32 temp2
+float32 temp3
+float32 pressure
+float32 humidity

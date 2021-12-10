@@ -15,7 +15,7 @@ class MsgTransmitter(Node):
     def __init__(self):
         super().__init__("msg_transmitter")
 
-        sensor_topics = self.get_parameter("sensor_topics").value
+        self.declare_parameter("gcu_addr", "13A20041D17945")
         self.gcu_addr = self.get_parameter("gcu_addr").value
 
         # subscribe to each sensor, publish raw bytes to the transmitter

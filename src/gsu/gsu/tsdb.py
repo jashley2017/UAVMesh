@@ -21,7 +21,6 @@ class GroundStation(Node):
                 10)
         self.declare_parameter('outfile', '~/outfile.log')
         self.declare_parameter('time_topic', 'gps_time')
-        self.declare_parameter('sensor_topics', {})
 
         self._subscription2 = self.create_subscription(
            TimeReference,
@@ -42,9 +41,7 @@ class GroundStation(Node):
         port = 8086
         self.client = InfluxDBClient(host, port, user, password, dbname)
 
-        # sensor_topics
 
-        self.sensor_topics = self.get_parameter('sensor_topics').value
         self.codes = {}
         self.specs = {}
 
@@ -69,9 +66,9 @@ class GroundStation(Node):
         return Tp1 + (Cm - Cp1)/(Cp2 - Cp1) * (Tp2 - Tp1)
 
     @staticmethod
-    def _unpack_bytelist(var, bytesize=4, vartype='f'):
+    def _unpack_bytelist(var, vartype='f'):
         # unpacks a float from bytes[]
-        return struct.unpack(vartype, struct.pack(str(bytesize) + 'c', *var))[0]
+        return struct.unpack(vartype, struct.pack(str(struct.calcsize(vartype)) + 'c', *var))[0]
 
     def rx_callback(self, msg):
         if self.rel_ts1:
@@ -84,21 +81,23 @@ class GroundStation(Node):
         if msg.data[0] == b'0':
             # sensor spec
             spec_msg = str(struct.pack(str(len(msg.data)) + 'c', *msg.data), encoding='ascii')
-            self.get_logger.info(f"Found sensor spec {spec_msg} from {msg.dev_addr}.")
+            # self.get_logger().info(f"Found sensor spec {spec_msg} from {msg.dev_addr}.")
             _, sensor_code, msg_type, topic = spec_msg.split(',')
             if not self.codes.get(msg.dev_addr, None):
                 self.codes[msg.dev_addr] = [None]*255 # 255 max sensor type count
-            self.codes[msg.dev_addr][sensor_code] = (topic, msg_type)
+            self.codes[msg.dev_addr][int(sensor_code)] = (topic, msg_type)
             if msg_type not in self.specs:
                 self.specs[msg_type] = Sensor.parse_msg(locate(msg_type))
+                # self.get_logger().info(f"resulting spec: {self.specs[msg_type]}")
             tx_ack = Packet()
-            tx_ack.data = [b'0', struct.pack('B', sensor_code)]
+            tx_ack.data = [b'0', struct.pack('B', int(sensor_code))]
             tx_ack.dev_addr = msg.dev_addr
             self.publisher.publish(tx_ack)
         else:
+            # self.get_logger().info(f"Received datapoint: {msg.data}")
             # sensor data
             code = struct.unpack('B', msg.data[0])[0]
-            msg_stamp = _unpack_bytelist(msg.data[1:9], vartype='d')
+            msg_stamp = self._unpack_bytelist(msg.data[1:9], vartype='d')
             roundtrip_time = ts - msg_stamp
 
             topic, msg_type = self.codes[msg.dev_addr][code]
@@ -108,7 +107,7 @@ class GroundStation(Node):
             tags = {"PlaneID": msg.dev_addr}
             byte_index = 9
             for field, field_type in spec:
-                fields[field] = _unpack_bytelist(msg.data[byte_index: byte_index+struct.calcsize(field_type)], vartype=field_type)
+                fields[field] = self._unpack_bytelist(msg.data[byte_index: byte_index+struct.calcsize(field_type)], vartype=field_type)
                 byte_index += struct.calcsize(field_type)
             fields["timelag"] = roundtrip_time
             samples =  [{
@@ -117,6 +116,7 @@ class GroundStation(Node):
                     "time": int(msg_stamp*1000),
                     "fields": fields
             }]
+            # self.get_logger().info(f"logging: {samples}")
             self.client.write_points(samples, time_precision='ms')
 
 def main(args=None):

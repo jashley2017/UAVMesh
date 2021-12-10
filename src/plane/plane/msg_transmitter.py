@@ -1,13 +1,17 @@
 #!/usr/bin/env python
 import struct
+import numpy as np
 import re
 import datetime
 import rclpy
+import yaml
 from networked_sensor.networked_sensor import Sensor # TODO: need sensor package
 from rclpy.node import Node
 # from environ_msgs.msg import Pth, iMET
 from xbee_interfaces.msg import Packet
 from sensor_msgs.msg import TimeReference, NavSatFix
+from environ_msgs.msg import IMET
+from std_msgs.msg import String
 # from uldaq_msgs.msg import Measurement
 from pydoc import locate
 
@@ -15,7 +19,8 @@ class MsgTransmitter(Node):
     def __init__(self):
         super().__init__("msg_transmitter")
 
-        sensor_topics = self.get_parameter("sensor_topics").value
+        self.declare_parameter("gcu_addr", "13A20041D17945")
+        self.declare_parameter("time_topic", "gps_time")
         self.gcu_addr = self.get_parameter("gcu_addr").value
 
         # subscribe to each sensor, publish raw bytes to the transmitter
@@ -26,8 +31,8 @@ class MsgTransmitter(Node):
             1,
         )
         self.tx_pub = self.create_publisher(Packet, "transmit", 10)
-        self.create_subscription(Packet, "received", self.listen_incoming)
-        self.create_subscription(String, "sensor_descriptions", self._generate_callback)
+        self.create_subscription(Packet, "received", self.listen_incoming, 10)
+        self.create_subscription(String, "sensor_descriptions", self._generate_callback, 10)
         self._subs = []
         self.active_codes = []
 
@@ -38,7 +43,7 @@ class MsgTransmitter(Node):
         self.gps_ts2 = None
         self.code = 1
         # TODO is it important to get these from a config or is this good enough? for custom messages we could put a flag
-        self.gps_ts_types = [Sensor.get_msg_fullpath(NavsatFix), Sensor.get_msg_fullpath(iMET)]
+        self.gps_ts_types = [Sensor.get_msg_fullpath(NavSatFix), Sensor.get_msg_fullpath(IMET)]
 
     def timestamp_creator(self, time_msg):
         """
@@ -70,8 +75,8 @@ class MsgTransmitter(Node):
 
 
     @staticmethod
-    def _create_bytelist(var, bytelen=4, vartype="f"):
-        return list(struct.unpack(str(bytelen) + "c", struct.pack(vartype, var)))
+    def _create_bytelist(*var, vartype="f"):
+        return list(struct.unpack(str(struct.calcsize(vartype)) + "c", struct.pack(vartype, *var)))
 
     def _generate_callback(self, desc):
         '''
@@ -86,7 +91,7 @@ class MsgTransmitter(Node):
         msg_type, topic = sensor_desc['subscribe']
         conversions = sensor_desc['attributes']
 
-        sensor_code = code
+        sensor_code = self.code
         self.code += 1
 
         # Send the new sensor code as a message to GSU
@@ -94,11 +99,11 @@ class MsgTransmitter(Node):
         tx_msg.data = [struct.pack("c", bytes(c, encoding="ascii")) for c in f"0,{sensor_code},{msg_type},{topic}"]
         tx_msg.dev_addr = self.gcu_addr
         tx_msg.is_broadcast = False
-        self.get_logger().info(f"sending specification: 0,{sensor_code},{msg_type},{topic}")
+        # self.get_logger().info(f"sending specification: 0,{sensor_code},{msg_type},{topic}")
         self.tx_pub.publish(tx_msg)
 
         if msg_type in self.gps_ts_types: # if the message timestamp is a gps timestamp
-            def callback(self, msg):
+            def callback(msg):
                 '''
                 turn sensor message into a transmittable bytearray
                 '''
@@ -107,14 +112,14 @@ class MsgTransmitter(Node):
                     ts = (
                         float(msg.header.stamp.sec) + float(msg.header.stamp.nanosec) / 1000000000
                     )
-                    msg_data += _create_bytelist(ts, vartype="d")
+                    msg_data += self._create_bytelist(ts, vartype="d")
 
                     # construct your bytelist from ros msg attributes
                     for attr, vartype in conversions:
                         if isinstance(getattr(msg,attr), type(np.array([]))):
-                            msg_data += _create_bytelist(*getattr(msg, attr).tolist(), vartype=vartype)
+                            msg_data += self._create_bytelist(*getattr(msg, attr).tolist(), vartype=vartype)
                         else:
-                            msg_data += _create_bytelist(getattr(msg, attr), vartype=vartype)
+                            msg_data += self._create_bytelist(getattr(msg, attr), vartype=vartype)
 
                     tx_msg = Packet()
                     tx_msg.data = msg_data
@@ -124,7 +129,7 @@ class MsgTransmitter(Node):
                 else:
                     self.get_logger().warn("Trying to publish on a sensor that has not yet been acknowledged.")
         else:
-            def callback(self, msg):
+            def callback(msg):
                 '''
                 turn sensor message into a transmittable bytearray
                 '''
@@ -134,18 +139,20 @@ class MsgTransmitter(Node):
                     sample_time = (
                         float(msg.header.stamp.sec) + float(msg.header.stamp.nanosec) / 1000000000
                     )
+                    self.get_logger().info("trying to serialize pth")
+                    if not self.rel_ts1: 
+                        return
                     ts = self.interpolate_utc(
                         sample_time, self.rel_ts1, self.rel_ts2, self.gps_ts1, self.gps_ts2
                     )
-                    msg_data += _create_bytelist(ts, vartype="d")
+                    msg_data += self._create_bytelist(ts, vartype="d")
 
                     # construct your bytelist from ros msg attributes
                     for attr, vartype in conversions:
                         if isinstance(getattr(msg,attr), type(np.array([]))):
-                            msg_data += _create_bytelist(*getattr(msg, attr).tolist(), vartype=vartype)
+                            msg_data += self._create_bytelist(*getattr(msg, attr).tolist(), vartype=vartype)
                         else:
-                            msg_data += _create_bytelist(getattr(msg, attr), vartype=vartype)
-
+                            msg_data += self._create_bytelist(getattr(msg, attr), vartype=vartype)
                     tx_msg = Packet()
                     tx_msg.data = msg_data
                     tx_msg.dev_addr = self.gcu_addr
@@ -153,12 +160,14 @@ class MsgTransmitter(Node):
                     self.tx_pub.publish(tx_msg)
                 else:
                     self.get_logger().warn("Trying to publish on a sensor that has not yet been acknowledged.")
-        self._subs.append(self.create_subscription(locate(msg_type), topic, callback))
+        self._subs.append(self.create_subscription(locate(msg_type), topic, callback, 1))
 
     def listen_incoming(self, rx_msg):
+        # self.get_logger().info(f"received message {rx_msg.data[0]}")
         if rx_msg.data[0] == b'0':
             # receiving an ack to a sensor
             good_sensor_code = struct.unpack('B', rx_msg.data[1])[0]
+            self.get_logger().info(f"found code: {good_sensor_code}")
             self.active_codes.append(good_sensor_code)
 
 
@@ -168,7 +177,6 @@ def main(args=None):
     rclpy.spin(tx_pub)
     tx_pub.destroy_node()
     rclpy.shutdown()
-
 
 if __name__ == "__main__":
     main()

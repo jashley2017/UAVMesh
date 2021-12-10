@@ -60,7 +60,7 @@ class PthProbe(Sensor):
                 msg.pressure = float(match_dict['pressure_val'])
                 msg.humidity = float(match_dict['hum_val'])
                 self.publisher_.publish(msg)
-                self.get_logger().info(f"Publishing pth {msg.serial}")
+                self.get_logger().info(f"Publishing pth {pth}")
 
 def main(args=None):
     print("Launching")

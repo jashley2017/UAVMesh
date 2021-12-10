@@ -56,7 +56,7 @@ def generate_launch_description():
                 {"pth_top": "pth_msg"},
                 {"pth_port": f},
             ]}),
-	'/dev/sonic*': (Node, lambda f: {
+	'/dev/imet*': (Node, lambda f: {
 	    "package": "iMET_data",
 	    "namespace": "plane",
 	    "executable": "imet_transmitter",#TODO: double check
@@ -65,7 +65,7 @@ def generate_launch_description():
 		{"iMET_port":f},
 		{"iMET_baud": 9600},
 	    ] 
-
+        }),
         '/dev/sonic*': (Node, lambda f: {
             "package":"anemometer",
             "namespace":"plane",

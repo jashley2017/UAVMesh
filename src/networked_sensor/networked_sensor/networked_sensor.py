@@ -12,13 +12,14 @@ class Sensor(Node):
         super().__init__(node_name)
     def create_publisher(self, msg_type, topic, queue=10):
         '''overrides the base create publisher to send a sensor description before the information comes back'''
-        spec_pub = super().create_publisher(String, 'sensor_descriptions', 10)
-        conversions = self.parse_msg(msg_type)
-        msg_path = self.get_msg_fullpath(msg_type)
-        spec = {"subscribe": [msg_path, topic],
-                "attributes": conversions}
-        spec_str = String()
-        spec_str.data = str(spec)
+        if topic != '/parameter_events':
+            spec_pub = super().create_publisher(String, 'sensor_descriptions', 10)
+            conversions = self.parse_msg(msg_type)
+            msg_path = self.get_msg_fullpath(msg_type)
+            spec = {"subscribe": [msg_path, topic],
+                    "attributes": conversions}
+            spec_str = String()
+            spec_str.data = str(spec)
         spec_pub.publish(spec_str)
         return super().create_publisher(msg_type, topic, queue)
     def create_local_publisher(self, msg_type, topic, queue=10):

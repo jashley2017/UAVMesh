@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'pth'
+package_name = 'fake_gps'
 
 setup(
     name=package_name,
@@ -13,14 +13,14 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='ubuntu',
-    maintainer_email='ubuntu@todo.todo',
+    maintainer='josh',
+    maintainer_email='jashley2017@gmail.com',
     description='TODO: Package description',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-		'pth_timeref = pth.pth_timeref:main',
+            'fake_gps = fake_gps.gps:main',
         ],
     },
 )

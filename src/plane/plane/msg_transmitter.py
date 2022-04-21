@@ -1,19 +1,15 @@
 #!/usr/bin/env python
 import struct
+from pydoc import locate
 import numpy as np
-import re
-import datetime
 import rclpy
 import yaml
-from networked_sensor.networked_sensor import Sensor # TODO: need sensor package
+from networked_sensor.networked_sensor import Sensor
 from rclpy.node import Node
 # from environ_msgs.msg import Pth, iMET
 from xbee_interfaces.msg import Packet
 from sensor_msgs.msg import TimeReference, NavSatFix
-from environ_msgs.msg import IMET
 from std_msgs.msg import String
-# from uldaq_msgs.msg import Measurement
-from pydoc import locate
 
 class MsgTransmitter(Node):
     def __init__(self):
@@ -43,7 +39,7 @@ class MsgTransmitter(Node):
         self.gps_ts2 = None
         self.code = 1
         # TODO is it important to get these from a config or is this good enough? for custom messages we could put a flag
-        self.gps_ts_types = [Sensor.get_msg_fullpath(NavSatFix), Sensor.get_msg_fullpath(IMET)]
+        self.gps_ts_types = [Sensor.get_msg_fullpath(NavSatFix)]
 
     def timestamp_creator(self, time_msg):
         """
@@ -72,7 +68,6 @@ class MsgTransmitter(Node):
         Tp2 = Time from the UBX message corresponding to second ideal clock pulse
         """
         return Tp1 + (Cm - Cp1) / (Cp2 - Cp1) * (Tp2 - Tp1)
-
 
     @staticmethod
     def _create_bytelist(*var, vartype="f"):

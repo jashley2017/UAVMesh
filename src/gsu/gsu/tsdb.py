@@ -87,7 +87,7 @@ class GroundStation(Node):
                 self.codes[msg.dev_addr] = [None]*255 # 255 max sensor type count
             self.codes[msg.dev_addr][int(sensor_code)] = (topic, msg_type)
             if msg_type not in self.specs:
-                self.specs[msg_type] = Sensor.parse_msg(locate(msg_type))
+                self.specs[msg_type], _ = Sensor.generate_struct_spec_for(locate(msg_type))
                 # self.get_logger().info(f"resulting spec: {self.specs[msg_type]}")
             tx_ack = Packet()
             tx_ack.data = [b'0', struct.pack('B', int(sensor_code))]

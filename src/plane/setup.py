@@ -25,6 +25,7 @@ setup(
     entry_points={
         'console_scripts': [
             'transmitter = plane.msg_transmitter:main',
+            'logger = plane.msg_logger:main',
         ],
     },
 )

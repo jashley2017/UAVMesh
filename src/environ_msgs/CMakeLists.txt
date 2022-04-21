@@ -25,6 +25,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/NMEAXDR.msg"
   "msg/NMEAMWV.msg"
   "msg/IMET.msg"
+  "msg/TestMsg.msg"
 	DEPENDENCIES builtin_interfaces std_msgs
 )
 # uncomment the following section in order to fill in

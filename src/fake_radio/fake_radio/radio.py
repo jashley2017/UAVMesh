@@ -2,14 +2,17 @@ import struct
 
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, QoSDurabilityPolicy
 from std_msgs.msg  import String
 from xbee_interfaces.msg import Packet
 
 class Radio(Node):
     def __init__(self):
         super().__init__('fake_radio')
-        self._pub = self.create_publisher(Packet, 'received', 10)
-        self._sub = self.create_subscriber(Packet, 'transmit', self.callback, 10)
+        latching_qos = QoSProfile(depth=1, # QOS profile that queues message for subscriber
+            durability=QoSDurabilityPolicy.RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL)
+        self._pub = self.create_publisher(Packet, 'received', latching_qos)
+        self._sub = self.create_subscription(Packet, 'transmit', self.callback, latching_qos)
     def callback(self, msg):
         '''
         needs to catch sensor spec messages (code 0) and spit back out acknowledgements (ack)
@@ -21,7 +24,6 @@ class Radio(Node):
             ack.data = [b'0', struct.pack('B', int(sensor_code))]
             ack.dev_addr = msg.dev_addr
             self._pub.publish(ack)
-        # self.get_logger().info('got a packet!')
 
 def main(args=None):
     rclpy.init(args=args)

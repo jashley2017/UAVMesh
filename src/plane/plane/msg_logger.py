@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 import struct
 import os
+import time
 import datetime 
 from pydoc import locate
 import yaml
 from networked_sensor.networked_sensor import Sensor
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, QoSDurabilityPolicy
 # from environ_msgs.msg import Pth, iMET
 from xbee_interfaces.msg import Packet
 from sensor_msgs.msg import TimeReference, NavSatFix
@@ -22,9 +24,13 @@ class MsgLogger(Node):
             TimeReference,
             self.get_parameter("time_topic").value,
             self.timestamp_creator,
-            1,
+            10,
         )
-        self.spec_sub = self.create_subscription(String, "sensor_descriptions", self._generate_callback)
+        latching_qos = QoSProfile(depth=10, # QOS profile that queues message for subscriber
+            durability=QoSDurabilityPolicy.RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL)
+        self.spec_sub = self.create_subscription(String, "log_descriptions", self._generate_callback, latching_qos)
+        if self.get_parameter('logall').value:
+            self.spec_sub2 = self.create_subscription(String, "sensor_descriptions", self._generate_callback, latching_qos)
 
         self.rel_ts1 = None
         self.rel_ts2 = None
@@ -60,8 +66,8 @@ class MsgLogger(Node):
         Cm = time.time() value at the time of mth measurement
         Cp1 = time.time() value at the time of the first ideal clock pulse
         Cp2 = time.time() value at the time of the second ideal clock pulse
-        Tp1 = Time from the UBX message corresponding to first ideal clock pulse
-        Tp2 = Time from the UBX message corresponding to second ideal clock pulse
+        Tp1 = Time from the GPS message corresponding to first ideal clock pulse
+        Tp2 = Time from the GPS message corresponding to second ideal clock pulse
         """
         return Tp1 + (Cm - Cp1) / (Cp2 - Cp1) * (Tp2 - Tp1)
 
@@ -77,25 +83,37 @@ class MsgLogger(Node):
         sensor_desc = yaml.safe_load(desc.data)
         msg_type, topic = sensor_desc['subscribe']
         conversions = sensor_desc['attributes']
-        if sensor_desc['log'] or self.get_parameter('logall').value:
-            def _callback(msg):
-                # construct your bytelist from ros msg attributes
-                msg_data = ""
-                for attr, _ in conversions:
-                    msg_data += str(getattr(msg, attr))
-                logname = f"{self.logpath}/{topic}.log"
-                if not os.path.isfile(logname):
-                    with open(logname,"a+") as file:
-                        header = ''.join([attr for attr, _ in conversions])
-                        file.write(header)
-                        file.write("\n")
-                        file.write(msg_data)
-                        file.write("\n")
-                else:
-                    with open(logname,"a+") as file:
-                        file.write(msg_data)
-                        file.write("\n")
-            self._subs.append(self.create_subscription(locate(msg_type), topic, _callback, 1))
+        self.get_logger().info(f"Logging topic: {topic}.")
+        def _callback(msg):
+            # construct your bytelist from ros msg attributes
+            sample_time = 0
+            if not getattr(msg, 'header', False):
+                sample_time = time.time() # best we can do, likely adds a ton of delay
+            else:
+                sample_time = msg.header.stamp.sec + float(msg.header.stamp.nanosec/1e9)
+            if not self.gps_ts1:
+                return
+            true_sample_time = self.interpolate_utc(sample_time,
+                                                    self.rel_ts1, self.rel_ts2,
+                                                    self.gps_ts1, self.gps_ts2)
+            msg_data = f"{round(true_sample_time,6)},"
+            for attr, _ in conversions:
+                msg_data += str(getattr(msg, attr))
+                msg_data += ','
+            msg_data = msg_data[:-1] # remove last comma
+            logname = f"{self.logpath}/{topic}.log"
+            if not os.path.isfile(logname):
+                with open(logname,"a+") as file:
+                    header = "time,"+ ','.join([attr for attr, _ in conversions])
+                    file.write(header)
+                    file.write("\n")
+                    file.write(msg_data)
+                    file.write("\n")
+            else:
+                with open(logname,"a+") as file:
+                    file.write(msg_data)
+                    file.write("\n")
+        self._subs.append(self.create_subscription(locate(msg_type), topic, _callback, 1))
 
 def main(args=None):
     rclpy.init(args=args)

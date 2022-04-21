@@ -56,7 +56,7 @@ def generate_launch_description():
             executable="logger",
             name="msg_logger",
             parameters=[
-                config,
+                config, {"logall": True}
             ],
         )
     ]

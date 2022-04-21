@@ -1,25 +1,35 @@
 #!/usr/bin/env python
 import time
 import rclpy
-from rclpy.node import Node
+import numpy as np
 from networked_sensor.networked_sensor import Sensor
-from environ_msgs.msg import TestMsg
+from environ_msgs.msg import TestMsg, NMEAMWV, Pth
 
 class FakeSensor(Sensor):
     def __init__(self):
         super().__init__('fake_sensor')
-        self.publisher_ = self.create_publisher(TestMsg, 'fake_sensor', 10)
+        self._pub1 = self.create_publisher(TestMsg, 'fake_sensor', 10)
+        self._pub2 = self.create_publisher(NMEAMWV, 'fake_wind', 10)
+        self._pub3 = self.create_publisher(Pth, 'fake_temp', 10)
         timer_period = 1
-        self.timer = self.create_timer(timer_period, self.pth_callback)
+        self.timer = self.create_timer(timer_period, self.sensor_callback)
         self.i = 0
 
-    def pth_callback(self):
+    def sensor_callback(self):
         # timestamp = self.gps_ts + (self.rel_ts - time.time())
-        msg = TestMsg()
-        msg.header.stamp.sec = int(time.time())
-        msg.header.stamp.nanosec = int((time.time()-int(time.time()))*1e9)
-        msg.data = f"{self.i} dummy publish from pth"
-        self.publisher_.publish(msg)
+        msg1 = TestMsg()
+        msg1.header.stamp.sec = int(time.time())
+        msg1.header.stamp.nanosec = int((time.time()-int(time.time()))*1e9)
+        msg1.data = np.random.random()*128
+        self._pub1.publish(msg1)
+
+        msg2 = NMEAMWV()
+        msg2.header.stamp.sec = int(time.time())
+        msg2.header.stamp.nanosec = int((time.time()-int(time.time()))*1e9)
+        msg2.wind_speed = np.random.random()*100 # FAST WIND
+        msg2.wind_angle = np.random.random()*360 # SPINNY WIND
+        msg2.wind_speed_units = "K".encode('ascii')[0]
+        self._pub2.publish(msg2)
         self.get_logger().info(f"Publishing fake data: {self.i}")
         self.i += 1
 

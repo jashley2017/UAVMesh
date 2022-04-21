@@ -5,7 +5,7 @@ import time
 import sys
 import os
 import pynmea2
-from multiprocessing import Process, Value
+import threading
 
 # ros packages
 import rclpy
@@ -35,9 +35,17 @@ class Anemometer(Sensor):
         self.running = False
         self.read_thread.join()
 
+    @staticmethod
+    def str_to_roschar(string): # TODO, should be imported
+        '''
+        roschars are uint8's, this is mean to take a single string 
+        symbol (i.e. 'K') and turn in into its correct int
+        '''
+        return string.encode('ascii')[0]
+
     def log_nmea(self, usb_dev):
         sample_time = 0 # resolve scope issue
-        while rclpy.ok() and self.running():
+        while rclpy.ok() and self.running:
             try:
                 nmea_raw = usb_dev.readline().decode("ascii")
                 sample_time = time.time() # nearest millisecond to sample
@@ -53,7 +61,7 @@ class Anemometer(Sensor):
                         ros_msg.header.stamp.nsec = int((sample_time - int(sample_time))*1000000000)
 
                         ros_msg.temp = parsed_nmea.value
-                        ros_msg.units = parsed_nmea.units
+                        ros_msg.units = self.str_to_roschar(parsed_nmea.units)
                     else:
                         self.get_logger().warning(f"Got unknown NMEA XDR message: {parsed_nmea.id}")
                         continue
@@ -64,7 +72,7 @@ class Anemometer(Sensor):
                     ros_msg.header.stamp.nsec = int((sample_time - int(sample_time))*1000000000)
 
                     ros_msg.wind_speed = parsed_nmea.wind_speed
-                    ros_msg.wind_speed_units = parsed_nmea.wind_speed_units
+                    ros_msg.wind_speed_units = self.str_to_roschar(parsed_nmea.wind_speed_units)
                     ros_msg.wind_angle = parsed_nmea.wind_angle
                     self.wind_pub(ros_msg)
                 else:

@@ -6,6 +6,7 @@ import rclpy
 import yaml
 from networked_sensor.networked_sensor import Sensor
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, QoSDurabilityPolicy
 # from environ_msgs.msg import Pth, iMET
 from xbee_interfaces.msg import Packet
 from sensor_msgs.msg import TimeReference, NavSatFix
@@ -26,9 +27,11 @@ class MsgTransmitter(Node):
             self.timestamp_creator,
             1,
         )
-        self.tx_pub = self.create_publisher(Packet, "transmit", 10)
-        self.create_subscription(Packet, "received", self.listen_incoming, 10)
-        self.create_subscription(String, "sensor_descriptions", self._generate_callback, 10)
+        latching_qos = QoSProfile(depth=5, # QOS profile that queues message for subscriber
+            durability=QoSDurabilityPolicy.RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL)
+        self.tx_pub = self.create_publisher(Packet, "transmit", latching_qos)
+        self.create_subscription(Packet, "received", self.listen_incoming, latching_qos)
+        self.create_subscription(String, "sensor_descriptions", self._generate_callback, latching_qos)
         self._subs = []
         self.active_codes = []
 
@@ -94,6 +97,7 @@ class MsgTransmitter(Node):
         tx_msg.data = [struct.pack("c", bytes(c, encoding="ascii")) for c in f"0,{sensor_code},{msg_type},{topic}"]
         tx_msg.dev_addr = self.gcu_addr
         tx_msg.is_broadcast = False
+        self.get_logger().info(f"Transmitting topic: {topic}.")
         # self.get_logger().info(f"sending specification: 0,{sensor_code},{msg_type},{topic}")
         self.tx_pub.publish(tx_msg)
 
@@ -134,7 +138,6 @@ class MsgTransmitter(Node):
                     sample_time = (
                         float(msg.header.stamp.sec) + float(msg.header.stamp.nanosec) / 1000000000
                     )
-                    self.get_logger().info("trying to serialize pth")
                     if not self.rel_ts1: 
                         return
                     ts = self.interpolate_utc(

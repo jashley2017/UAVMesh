@@ -26,14 +26,15 @@ class Anemometer(Sensor):
         # parameters come from launch file, otherwise take default
         self.declare_parameter('sonic_port', '/dev/sonic1')
         self.declare_parameter('sonic_baud', 4800)
-        an1 = serial.Serial(self.get_parameter('sonic_port'), self.get_parameter('sonic_baud'))
+        an1 = serial.Serial(self.get_parameter('sonic_port').value, self.get_parameter('sonic_baud').value)
         self.read_thread = threading.Thread(target=self.log_nmea, args=(an1,))
         self.running = True
         self.read_thread.start()
 
     def __del__(self):
         self.running = False
-        self.read_thread.join()
+        if self.read_thread:
+            self.read_thread.join()
 
     @staticmethod
     def str_to_roschar(string): # TODO, should be imported
@@ -58,9 +59,9 @@ class Anemometer(Sensor):
                     if(parsed_nmea.id == "TempAir"):
                         ros_msg = NMEAXDR()
                         ros_msg.header.stamp.sec = int(sample_time)
-                        ros_msg.header.stamp.nsec = int((sample_time - int(sample_time))*1000000000)
+                        ros_msg.header.stamp.nanosec = int((sample_time - int(sample_time))*1000000000)
 
-                        ros_msg.temp = parsed_nmea.value
+                        ros_msg.temp = float(parsed_nmea.value)
                         ros_msg.units = self.str_to_roschar(parsed_nmea.units)
                     else:
                         self.get_logger().warning(f"Got unknown NMEA XDR message: {parsed_nmea.id}")
@@ -69,11 +70,11 @@ class Anemometer(Sensor):
                 elif (parsed_nmea.sentence_type == "MWV"):
                     ros_msg = NMEAMWV()
                     ros_msg.header.stamp.sec = int(sample_time)
-                    ros_msg.header.stamp.nsec = int((sample_time - int(sample_time))*1000000000)
+                    ros_msg.header.stamp.nanosec = int((sample_time - int(sample_time))*1000000000)
 
-                    ros_msg.wind_speed = parsed_nmea.wind_speed
+                    ros_msg.wind_speed = float(parsed_nmea.wind_speed)
                     ros_msg.wind_speed_units = self.str_to_roschar(parsed_nmea.wind_speed_units)
-                    ros_msg.wind_angle = parsed_nmea.wind_angle
+                    ros_msg.wind_angle = float(parsed_nmea.wind_angle)
                     self.wind_pub(ros_msg)
                 else:
                     self.get_logger().warning(f"Got unknown NMEA message: {parsed_nmea.sentence_type}")

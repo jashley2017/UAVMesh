@@ -30,6 +30,7 @@ class MsgLogger(Node):
             durability=QoSDurabilityPolicy.RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL)
         self.spec_sub = self.create_subscription(String, "log_descriptions", self._generate_callback, latching_qos)
         if self.get_parameter('logall').value:
+            self.get_logger().info("logging all topics locally")
             self.spec_sub2 = self.create_subscription(String, "sensor_descriptions", self._generate_callback, latching_qos)
 
         self.rel_ts1 = None

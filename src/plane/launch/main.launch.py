@@ -59,13 +59,13 @@ def generate_launch_description():
             ]
         }),
         '/dev/imet*': (Node, lambda f: {
-            "package": "iMET_data",
+            "package": "iMET",
             "namespace": "plane",
             "executable": "imet_transmitter",
             "name": "iMET_topic",
             "parameters": [
             {"iMET_port":f},
-            {"iMET_baud": 9600},
+            {"iMET_baud": 57600},
             ]
         }),
         '/dev/sonic*': (Node, lambda f: {
@@ -152,7 +152,7 @@ def generate_launch_description():
             name="msg_logger",
             parameters=[
                 config,
-                {'log_all': not has_radio} # if no radio, log everything
+                {'logall': not has_radio} # if no radio, log everything
             ],
         )
     ]

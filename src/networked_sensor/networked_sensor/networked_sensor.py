@@ -1,4 +1,5 @@
 import struct
+import time
 import re
 import numpy as np
 from std_msgs.msg import String
@@ -39,6 +40,7 @@ class Sensor(Node):
             else:
                 desc_topic = 'sensor_descriptions'
 
+            time.sleep(3)
             self.get_logger().info(f'asserting {spec} for {desc_topic}')
             latching_qos = QoSProfile(depth=5, # QOS profile that queues message for subscriber
                 durability=QoSDurabilityPolicy.RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL)

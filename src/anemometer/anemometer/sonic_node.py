@@ -75,7 +75,7 @@ class Anemometer(Sensor):
                     ros_msg.wind_speed = float(parsed_nmea.wind_speed)
                     ros_msg.wind_speed_units = self.str_to_roschar(parsed_nmea.wind_speed_units)
                     ros_msg.wind_angle = float(parsed_nmea.wind_angle)
-                    self.wind_pub(ros_msg)
+                    self.wind_pub.publish(ros_msg)
                 else:
                     self.get_logger().warning(f"Got unknown NMEA message: {parsed_nmea.sentence_type}")
                     continue

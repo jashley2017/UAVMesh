@@ -18,7 +18,6 @@ class MsgLogger(Node):
     def __init__(self):
         super().__init__("msg_logger")
         self.declare_parameter("time_topic", "gps_time")
-        self.declare_parameter("logdir", f"{os.environ['HOME']}")
         self.declare_parameter("logall", False)
         self._timeref_sub = self.create_subscription(
             TimeReference,
@@ -39,10 +38,19 @@ class MsgLogger(Node):
         self.gps_ts2 = None
 
         self.gps_ts_types = [Sensor.get_msg_fullpath(NavSatFix)]
-        self.logpath = datetime.datetime.now().strftime(f"{self.get_parameter('logdir').value}/%Y%m%d_%H%M%S")
+        self.get_logdir()
+        self._subs = []
+
+    def get_logdir(self): # logs to first usb drive available or homedir
+        basepath = f"{os.environ['HOME']}"
+        for i in range(8):
+            dirempty = len(os.listdir(f"/media/usb{i}")) == 0
+            if not dirempty:
+                basepath = f"/media/usb{i}"
+                break   
+        self.logpath = datetime.datetime.now().strftime(f"{basepath}/%Y%m%d_%H%M%S")
         if not os.path.isdir(self.logpath):
             os.mkdir(self.logpath)
-        self._subs = []
 
     def timestamp_creator(self, time_msg):
         """

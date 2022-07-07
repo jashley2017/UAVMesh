@@ -10,13 +10,6 @@ was designed to support The University of Kentucky's UAV labs projects.
 In particular, this project is supported by the 
 `NSF Grant #1932105 <https://www.nsf.gov/awardsearch/showAward?AWD_ID=1932105>`_.
 
-
-It pulls data from the `Open Food Facts database <https://world.openfoodfacts.org/>`_
-and offers a *simple* and *intuitive* API. Lumache has its documents hosted on Read the Docs.
-
-Check out the :doc:`usage` section for further information, including
-how to :ref:`installation` the project.
-
 .. note::
 
    This project is under active development.
@@ -25,6 +18,7 @@ Contents
 --------
 
 .. toctree::
-
-   usage
-   api
+  overview
+  protocol
+  usage
+  create_sensor

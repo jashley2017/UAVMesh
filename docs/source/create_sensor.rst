@@ -2,7 +2,7 @@ Creating a simple sensor.
 ===========================
 
 UAVMesh works very similarly to how standard ROS2 does when creating simple publishers and subscribers. 
-In this case, a 'sensor' is considered a device that we would like to receive information from and send 
+In this case, a *'sensor'* is considered a device that we would like to receive information from and send 
 that information across the system. This means that the purpose of a sensor node is to be a publisher of 
 that sensor's information.
 
@@ -10,7 +10,7 @@ Creating the sensor node.
 -------------------------
 A script has been provided, `create_sensor.sh <https://github.com/jashley2017/UAVMesh/create_sensor.sh>`_, 
 that will automatically populate a sensor node from a template. Here is an example of its usage in creating a 
-sensor called 'sonic_anemometer'
+sensor called *'sonic_anemometer'*.
 
 .. code-block:: bash
   :caption: Create sensor script
@@ -18,10 +18,11 @@ sensor called 'sonic_anemometer'
   ./create_sensor.sh sonic_anemometer
 
 This will create the following heirarchy we can now work in.
+
 | src/sonic_anemometer
 | ├── sonic_anemometer
-| |   ├── sonic_anemometer_node.py
-| |   └── __init__.py
+| │   ├── sonic_anemometer_node.py
+| │   └── __init__.py
 | ├── package.xml
 | ├── setup.cfg
 | ├── setup.py
@@ -93,7 +94,7 @@ This is quite a bit of code so let's break it down incrementally, starting with 
 
   self.sensor_pub = self.create_publisher(self.MSG, self.TOPIC, 10)
 
-Here we are creating a ROS2 publisher that is defined to publish a ROS2 message of type 'self.MSG' over the topic 'self.TOPIC'. 
+Here we are creating a ROS2 publisher that is defined to publish a ROS2 message of type *'self.MSG'* over the topic *'self.TOPIC'*. 
 These two values will need to be determined by you and put where there are 'TODO's at the top of the class. In short, the message 
 type determines the format of data that you can publish and the topic determines which pipe the message will go through upon 
 publication.
@@ -107,7 +108,7 @@ publication.
 
 This part of the code is me taking an educated guess that your sensor is some sort of serial device you would like to connect to, usually USB. 
 If that is the case then this part of the code is for you! Otherwise, you need to research tutorials of how your device interfaces with the 
-computer and how to configure it in python. The 'declare_parameter' statements tell ROS2 to look for these parameters named 'sonic_anemometer_port' 
+computer and how to configure it in python. The *'declare_parameter'* statements tell ROS2 to look for these parameters named *'sonic_anemometer_port'*
 and 'sonic_anemomter_baudrate' at launch time. The second parameter in the statement is the default value if ROS2 doesn't find this. It is advisable 
 to populate this with your best guess. Using these parameters, 'serial_dev' creates a pyserial device we can interface with later. 
 
@@ -118,8 +119,8 @@ to populate this with your best guess. Using these parameters, 'serial_dev' crea
   self.running = True
   self.read_thread.start()
 
-In the final part of the '__init__' we want to setup a loop to continuously track the status of our serial device. ROS2 nodes commonly work like arduino's 
-with a 'setup' in '__init__' and a 'loop' in your defined thread.
+In the final part of the *'__init__'* we want to setup a loop to continuously track the status of our serial device. 
+ROS2 nodes commonly work like arduino's with a *'setup'* in *'__init__'* and a *'loop'* in your defined thread.
 
 .. code-block:: python
 
@@ -132,8 +133,8 @@ with a 'setup' in '__init__' and a 'loop' in your defined thread.
               self.get_logger().warning("got decode error, if this continues frequently restart program.")
               continue
 
-Now that our '__init__' has started running our 'sensor_loop' let's take a look at what is going on there. Firstly, if the ROS2 master shuts down we want 
-all related processes to finish as well, which is the purpose of the while statement including 'rclpy.ok()'. Second, 'serial_dev.readline()' reads the raw 
+Now that our *'__init__'* has started running our *'sensor_loop'* let's take a look at what is going on there. Firstly, if the ROS2 master shuts down we want 
+all related processes to finish as well, which is the purpose of the while statement including 'rclpy.ok()'. Second, *'serial_dev.readline()'* reads the raw 
 information coming from the sensor as an ascii string. We also take the time of the sample here too.
 
 .. code-block:: python
@@ -157,8 +158,8 @@ your sensor. If you need to create your own udev rule, `here is a helpful tutori
 On the udevadm info command primarily look for the *idProduct* and *idVendor* attributes.
 
 Once you have discovered the attributes that uniquely identify your device two things need to be done. Firstly, add a symlink 
-command to the end of the rule to specify what your devices would like to be named. For instance 'SYMLINK+="xbee%n"' will create 
-devices that look like '/dev/xbee1', '/dev/xbee2', etc. Then we need to add the udev rule to devices/66-ftdi.rules.
+command to the end of the rule to specify what your devices would like to be named. For instance *'SYMLINK+="xbee%n"'* will create 
+devices that look like *'/dev/xbee1'*, *'/dev/xbee2'*, etc. Then we need to add the udev rule to devices/66-ftdi.rules.
 
 .. code-block:: bash
 

@@ -8,7 +8,7 @@ that sensor's information.
 
 Creating the sensor node.
 -------------------------
-A script has been provided, `create_sensor.sh<https://github.com/jashley2017/UAVMesh/create_sensor.sh>`_, 
+A script has been provided, `create_sensor.sh <https://github.com/jashley2017/UAVMesh/create_sensor.sh>`_, 
 that will automatically populate a sensor node from a template. Here is an example of its usage in creating a 
 sensor called 'sonic_anemometer'
 
@@ -18,15 +18,15 @@ sensor called 'sonic_anemometer'
   ./create_sensor.sh sonic_anemometer
 
 This will create the following heirarchy we can now work in.
-src/sonic_anemometer
-|-- sonic_anemometer
-|   |-- sonic_anemometer_node.py
-|   |-- __init__.py
-|-- package.xml
-|-- setup.cfg
-|-- setup.py
-|-- resource
-|-- test
+| src/sonic_anemometer
+| ├── sonic_anemometer
+| |   ├── sonic_anemometer_node.py
+| |   └── __init__.py
+| ├── package.xml
+| ├── setup.cfg
+| ├── setup.py
+| ├── resource
+| └── test
 
 The key files are, sonic_anemometer_node.py, package.xml, and setup.py. Here are each of their function. 
 
@@ -42,7 +42,7 @@ Writing your sensor node script
 Looking inside the node script that you generated in the previous part.
 
 .. code-block:: python
-   :caption: Full python sensor node template 
+  :caption: Full python sensor node template 
 
   import serial
   import time
@@ -90,6 +90,7 @@ Looking inside the node script that you generated in the previous part.
 This is quite a bit of code so let's break it down incrementally, starting with the __init__ block.
 
 .. code-block:: python
+
   self.sensor_pub = self.create_publisher(self.MSG, self.TOPIC, 10)
 
 Here we are creating a ROS2 publisher that is defined to publish a ROS2 message of type 'self.MSG' over the topic 'self.TOPIC'. 
@@ -98,6 +99,7 @@ type determines the format of data that you can publish and the topic determines
 publication.
 
 .. code-block:: python
+
   # example parameters, delete if you do not use
   self.declare_parameter('sonic_anemometer_port', '')
   self.declare_parameter('sonic_anemomter_baudrate', '')
@@ -110,6 +112,7 @@ and 'sonic_anemomter_baudrate' at launch time. The second parameter in the state
 to populate this with your best guess. Using these parameters, 'serial_dev' creates a pyserial device we can interface with later. 
 
 .. code-block:: python
+
   # start the main logging loop
   self.read_thread = threading.Thread(target=self.sensor_loop, args=(serial_dev,))
   self.running = True
@@ -119,6 +122,7 @@ In the final part of the '__init__' we want to setup a loop to continuously trac
 with a 'setup' in '__init__' and a 'loop' in your defined thread.
 
 .. code-block:: python
+
   def sensor_loop(self, serial_dev):
       while rclpy.ok() and self.running:
           try:
@@ -133,6 +137,7 @@ all related processes to finish as well, which is the purpose of the while state
 information coming from the sensor as an ascii string. We also take the time of the sample here too.
 
 .. code-block:: python
+
   # TODO: create code that turns raw into sensor_msg
   sensor_msg = 'TODO'
   self.sensor_pub.publish(sensor_msg)
@@ -148,7 +153,7 @@ Often times these projects require a multitude of sensors being logged simultane
 the same or different or a mix of both. Therefore, there needs to be a way to identify and enumerate the sensors as USB devices. 
 Luckily Linux provides a tool called UDEV for exactly this purpose. Unluckily, this does not mean it is a simple process to use 
 UDEV. Before looking for yourself, check to see if the sensor manufacturer or someone online has already made device rules for 
-your sensor. If you need to create your own udev rule, `here is a helpful tutorial<https://opensource.com/article/18/11/udev>`_. 
+your sensor. If you need to create your own udev rule, `here is a helpful tutorial <https://opensource.com/article/18/11/udev>`_. 
 On the udevadm info command primarily look for the *idProduct* and *idVendor* attributes.
 
 Once you have discovered the attributes that uniquely identify your device two things need to be done. Firstly, add a symlink 
@@ -156,6 +161,7 @@ command to the end of the rule to specify what your devices would like to be nam
 devices that look like '/dev/xbee1', '/dev/xbee2', etc. Then we need to add the udev rule to devices/66-ftdi.rules.
 
 .. code-block:: bash
+
   echo $NEW_UDEV_RULE >> devices/66-ftdi.rules
   sudo cp devices/66-ftdi.rules /etc/udev/rules.d/66-ftdi.rules
 

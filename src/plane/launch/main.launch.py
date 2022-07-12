@@ -78,7 +78,16 @@ def generate_launch_description():
                 {"sonic_baud": 4800},
             ]
         }),
-        '/dev/daq*': (ComposableNodeContainer, lambda f: {
+        '/dev/ulda*': (Node, lambda f: { 
+            # a hack to launch 
+            # two nodes from one device
+            "package":"uldaq",
+            "namespace":"plane",
+            "executable": "uldaq_sensor_wrapper.py",
+            "name": "uldaq_wrapper",
+            "parameters": []
+        }),
+        '/dev/uldaq*': (ComposableNodeContainer, lambda f: {
             "name":"uldaq_container",
             "namespace":"plane",
             "package":"rclcpp_components",
@@ -87,12 +96,13 @@ def generate_launch_description():
                 ComposableNode(
                     package="uldaq",
                     plugin="uldaq_ros::UldaqPublisher",
+                    namespace="plane",
                     name="uldaq_publisher",
                     parameters=[
                         {
                             "v_range": 5,
                             "chan_num": 8,
-                            "rate": 1000,
+                            "rate": 100,
                         }
                     ],
                 )

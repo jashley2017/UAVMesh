@@ -24,7 +24,7 @@ class Sensor(Node):
         2. If the ros msg type has an attribute DONT_TRANSMIT, log only.
         TODO: include approximate rate in this
         calculation if possible.
-        3. If the ros msg has a dynamically sized variable do not include.
+        3. If the ros msg has a dynamically sized variable do not transmit.
         '''
         # parameter_events is a background topic
         if topic != '/parameter_events':
@@ -59,6 +59,7 @@ class Sensor(Node):
         TODO: be designed with a depth constrained recursion for complex messages.
         '''
         conversions = [
+            # single value
             (re.compile('^byte$'), 'c'),
             (re.compile('^char$'), 'c'),
             (re.compile('^float32$'), 'f'),
@@ -73,7 +74,9 @@ class Sensor(Node):
             (re.compile('^uint32$'), 'I'),
             (re.compile('^int64$'), 'q'),
             (re.compile('^uint64$'), 'Q'),
-            # (re.compile('^string$'), 's'),
+            # dynamic arrays (CANNOT SERIALIZE, LOG ONLY)
+            (re.compile(r'^sequence<.*>$'), 'dynamic'),
+            # fixed arrays
             (re.compile(r'^byte\[(\d+)\]$'), lambda m: 'c'*m),
             (re.compile(r'^char\[(\d+)\]$'), lambda m: 'c'*m),
             (re.compile(r'^float32\[(\d+)\]$'), lambda m: 'f'*m),
@@ -103,8 +106,12 @@ class Sensor(Node):
                         conversion_size += struct.calcsize(conversion(element_count))
                         conversion_list.append([attr[1:], conversion(element_count)])
                     else:
-                        conversion_size += struct.calcsize(conversion)
-                        conversion_list.append([attr[1:], conversion])
+                        if conversion == 'dynamic':
+                            conversion_size += Sensor.MAX_PACKET # dynamic arrays cannot be trusted to transmit
+                            conversion_list.append([attr[1:], conversion])
+                        else:
+                            conversion_size += struct.calcsize(conversion)
+                            conversion_list.append([attr[1:], conversion])
                     break
         return conversion_list, conversion_size
     @staticmethod

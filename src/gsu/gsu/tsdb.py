@@ -68,7 +68,10 @@ class GroundStation(Node):
     @staticmethod
     def _unpack_bytelist(var, vartype='f'):
         # unpacks a float from bytes[]
-        return struct.unpack(vartype, struct.pack(str(struct.calcsize(vartype)) + 'c', *var))[0]
+        decompressed = struct.unpack(vartype, struct.pack(str(struct.calcsize(vartype)) + 'c', *var))
+        if len(decompressed) == 1:
+            return decompressed[0]
+        return decompressed
 
     def rx_callback(self, msg):
         if self.rel_ts1:
@@ -107,7 +110,12 @@ class GroundStation(Node):
             tags = {"PlaneID": msg.dev_addr}
             byte_index = 9
             for field, field_type in spec:
-                fields[field] = self._unpack_bytelist(msg.data[byte_index: byte_index+struct.calcsize(field_type)], vartype=field_type)
+                unpacked = self._unpack_bytelist(msg.data[byte_index: byte_index+struct.calcsize(field_type)], vartype=field_type)
+                if isinstance(unpacked, tuple):
+                    for i, subfield in enumerate(unpacked):
+                        fields[field + str(i)] = subfield
+                else:
+                    fields[field] = unpacked
                 byte_index += struct.calcsize(field_type)
             fields["timelag"] = roundtrip_time
             samples =  [{

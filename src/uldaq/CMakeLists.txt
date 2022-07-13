@@ -17,9 +17,11 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_python REQUIRED)
 find_package(uldaq_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
+find_package(rclpy REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
@@ -63,6 +65,13 @@ install(
   INCLUDES DESTINATION include
   DESTINATION lib/${PROJECT_NAME}
 )
+
+ament_python_install_package(${PROJECT_NAME})
+
+install(PROGRAMS
+	scripts/uldaq_sensor_wrapper.py
+	DESTINATION lib/${PROJECT_NAME}
+	)
 
 install(DIRECTORY include/ DESTINATION include)
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})

@@ -105,11 +105,10 @@ class MsgLogger(Node):
             true_sample_time = self.interpolate_utc(sample_time,
                                                     self.rel_ts1, self.rel_ts2,
                                                     self.gps_ts1, self.gps_ts2)
-            msg_data = f"{round(true_sample_time,6)},"
+            msg_data = f"{round(true_sample_time,6)}"
             for attr, _ in conversions:
-                msg_data += str(getattr(msg, attr))
                 msg_data += ','
-            msg_data = msg_data[:-1] # remove last comma
+                msg_data += str(getattr(msg, attr))
             logname = f"{self.logpath}/{topic}.log"
             if not os.path.isfile(logname):
                 with open(logname,"a+") as file:

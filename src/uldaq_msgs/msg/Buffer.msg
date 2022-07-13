@@ -1,2 +1,3 @@
 std_msgs/Header header
-byte[] data
+float64[] data
+bool DONT_TRANSMIT=true # stops transmit over network, see networked_sensor

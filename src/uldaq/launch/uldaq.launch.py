@@ -18,7 +18,7 @@ def generate_launch_description():
                 parameters=[{
                     "v_range": 5,
                     "chan_num": 8,
-                    "rate": 1000,
+                    "rate": 100,
                 }]
             )
         ],

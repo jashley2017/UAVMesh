@@ -1,15 +1,13 @@
 #!/usr/bin/env python
-from influxdb import InfluxDBClient
-import rclpy
 import struct
 from pydoc import locate
-from networked_sensor.networked_sensor import Sensor # TODO: need sensor package
-import datetime
 import time
-import re
+import rclpy
 from rclpy.node import Node
-from xbee_interfaces.msg import Packet
+from influxdb import InfluxDBClient
 from sensor_msgs.msg import TimeReference
+from networked_sensor.networked_sensor import Sensor
+from xbee_interfaces.msg import Packet
 
 class GroundStation(Node):
     def __init__(self):
@@ -41,7 +39,7 @@ class GroundStation(Node):
         port = 8086
         self.client = InfluxDBClient(host, port, user, password, dbname)
 
-
+        self.plane_names = {}
         self.codes = {}
         self.specs = {}
 
@@ -75,14 +73,12 @@ class GroundStation(Node):
 
     def rx_callback(self, msg):
         if self.rel_ts1:
-            # ts = self.interpolate_utc(time.time(), self.rel_ts1, self.rel_ts2, self.gps_ts1, self.gps_ts2)
+            ts = self.interpolate_utc(time.time(), self.rel_ts1, self.rel_ts2, self.gps_ts1, self.gps_ts2)
             # self.get_logger().info(f"{time.time()} -> {ts}:\n [{self.rel_ts1}, {self.gps_ts1}]\n [{self.rel_ts2}, {self.gps_ts2}]")
-            ts = time.time()
         else:
             return
         samples = []
-        if msg.data[0] == b'0':
-            # sensor spec
+        if msg.data[0] == b'0': # sensor spec
             spec_msg = str(struct.pack(str(len(msg.data)) + 'c', *msg.data), encoding='ascii')
             # self.get_logger().info(f"Found sensor spec {spec_msg} from {msg.dev_addr}.")
             _, sensor_code, msg_type, topic = spec_msg.split(',')
@@ -92,22 +88,29 @@ class GroundStation(Node):
             if msg_type not in self.specs:
                 self.specs[msg_type], _ = Sensor.generate_struct_spec_for(locate(msg_type))
                 # self.get_logger().info(f"resulting spec: {self.specs[msg_type]}")
-            tx_ack = Packet()
-            tx_ack.data = [b'0', struct.pack('B', int(sensor_code))]
-            tx_ack.dev_addr = msg.dev_addr
-            self.publisher.publish(tx_ack)
-        else:
+            self.sensor_acknowledge(sensor_code, msg.dev_addr)
+        elif msg.data[0] == b'2': # register plane
+            plane_msg = str(struct.pack(str(len(msg.data)) + 'c', *msg.data), encoding='ascii')
+            _, plane_hostname = plane_msg.split(',')
+            self.plane_names[msg.dev_addr] = plane_hostname
+        else: # sensor data
             # self.get_logger().info(f"Received datapoint: {msg.data}")
             # sensor data
             code = struct.unpack('B', msg.data[0])[0]
             msg_stamp = self._unpack_bytelist(msg.data[1:9], vartype='d')
             roundtrip_time = ts - msg_stamp
 
+            if self.plane_names.get(msg.dev_addr, None) is None:
+                self.unknown_plane(msg.dev_addr)
+                return
+            if self.codes[msg.dev_addr][code] is None:
+                self.unknown_sensor(code, msg.dev_addr)
+                return
+
             topic, msg_type = self.codes[msg.dev_addr][code]
             spec = self.specs[msg_type]
-
             fields = {}
-            tags = {"PlaneID": msg.dev_addr}
+            tags = {"PlaneID": self.plane_names[msg.dev_addr]}
             byte_index = 9
             for field, field_type in spec:
                 unpacked = self._unpack_bytelist(msg.data[byte_index: byte_index+struct.calcsize(field_type)], vartype=field_type)
@@ -126,6 +129,27 @@ class GroundStation(Node):
             }]
             # self.get_logger().info(f"logging: {samples}")
             self.client.write_points(samples, time_precision='ms')
+
+    # protocol formatting helper functions
+    def unknown_plane(self, dev_addr):
+        self.get_logger().warn("Got message from unknown plane, asking for hostname.")
+        data = [b'3']
+        self._tx(data, dev_addr)
+
+    def unknown_sensor(self, code, dev_addr):
+        self.get_logger().warn(f"Received unknown sensor code from {self.plane_names.get(dev_addr, 'Unknown plane')}. Asking for retransmit.")
+        data = [b'1', struct.pack('B', int(code))]
+        self._tx(data, dev_addr)
+
+    def sensor_acknowledge(self, code, dev_addr):
+        data = [b'0', struct.pack('B', int(code))]
+        self._tx(data, dev_addr)
+
+    def _tx(self, data, dev_addr):
+        msg = Packet()
+        msg.data = data
+        msg.dev_addr = dev_addr
+        self.publisher.publish(msg)
 
 def main(args=None):
     rclpy.init(args=args)

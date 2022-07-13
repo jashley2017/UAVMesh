@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import struct
+import socket
 from pydoc import locate
 import numpy as np
 import rclpy
@@ -34,6 +35,7 @@ class MsgTransmitter(Node):
         self.create_subscription(String, "sensor_descriptions", self._generate_callback, latching_qos)
         self._subs = []
         self.active_codes = []
+        self.specs = {}
 
         # setup management variables
         self.rel_ts1 = None
@@ -43,6 +45,7 @@ class MsgTransmitter(Node):
         self.code = 1
         # TODO is it important to get these from a config or is this good enough? for custom messages we could put a flag
         self.gps_ts_types = [Sensor.get_msg_fullpath(NavSatFix)]
+        self.send_hostname()
 
     def timestamp_creator(self, time_msg):
         """
@@ -76,6 +79,24 @@ class MsgTransmitter(Node):
     def _create_bytelist(*var, vartype="f"):
         return list(struct.unpack(str(struct.calcsize(vartype)) + "c", struct.pack(vartype, *var)))
 
+    def send_spec(self, sensor_code, msg_type, topic):
+        data = [struct.pack("c", bytes(c, encoding="ascii")) for c in f"0,{sensor_code},{msg_type},{topic}"]
+        self._tx(data, self.gcu_addr)
+        self.get_logger().info(f"Transmitting topic: {topic}.")
+        # self.get_logger().info(f"sending specification: 0,{sensor_code},{msg_type},{topic}")
+
+    def send_hostname(self):
+        hostname = socket.gethostname()
+        data = [struct.pack("c", bytes(c, encoding="ascii")) for c in f"2,{hostname}"]
+        self._tx(data, self.gcu_addr)
+
+    def _tx(self, data, dev_addr):
+        msg = Packet()
+        msg.data = data
+        msg.dev_addr = dev_addr
+        msg.is_broadcast = False
+        self.tx_pub.publish(msg)
+
     def _generate_callback(self, desc):
         '''
         Parameters:
@@ -92,14 +113,9 @@ class MsgTransmitter(Node):
         sensor_code = self.code
         self.code += 1
 
+        self.specs[sensor_code] = (msg_type, topic)
+        self.send_spec(sensor_code, msg_type, topic)
         # Send the new sensor code as a message to GSU
-        tx_msg = Packet()
-        tx_msg.data = [struct.pack("c", bytes(c, encoding="ascii")) for c in f"0,{sensor_code},{msg_type},{topic}"]
-        tx_msg.dev_addr = self.gcu_addr
-        tx_msg.is_broadcast = False
-        self.get_logger().info(f"Transmitting topic: {topic}.")
-        # self.get_logger().info(f"sending specification: 0,{sensor_code},{msg_type},{topic}")
-        self.tx_pub.publish(tx_msg)
 
         if msg_type in self.gps_ts_types: # if the message timestamp is a gps timestamp
             def callback(msg):
@@ -166,9 +182,16 @@ class MsgTransmitter(Node):
         if rx_msg.data[0] == b'0':
             # receiving an ack to a sensor
             good_sensor_code = struct.unpack('B', rx_msg.data[1])[0]
-            self.get_logger().info(f"found code: {good_sensor_code}")
             self.active_codes.append(good_sensor_code)
-
+            return
+        if rx_msg.data[0] == b'1': # gsu doesnt know sensor
+            msg = str(struct.pack(str(len(msg.data)) + 'c', *rx_msg.data), encoding='ascii')
+            _, sensor_code = msg.split(',')
+            self.send_spec(sensor_code, *self.specs[sensor_code])
+            return
+        if rx_msg.data[0] == b'3': # gsu doesnt know plane
+            self.send_hostname()
+            return
 
 def main(args=None):
     rclpy.init(args=args)

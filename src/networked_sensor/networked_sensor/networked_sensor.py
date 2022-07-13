@@ -103,6 +103,8 @@ class Sensor(Node):
                 if match:
                     if len(match.groups()) > 0:
                         element_count = int(match.group(1))
+                        if conversion_size + struct.calcsize(conversion(element_count)) >= Sensor.MAX_PACKET and len(conversion_list) >= 1: # skip attribute
+                            continue
                         conversion_size += struct.calcsize(conversion(element_count))
                         conversion_list.append([attr[1:], conversion(element_count)])
                     else:
@@ -110,6 +112,8 @@ class Sensor(Node):
                             conversion_size += Sensor.MAX_PACKET # dynamic arrays cannot be trusted to transmit
                             conversion_list.append([attr[1:], conversion])
                         else:
+                            if conversion_size + struct.calcsize(conversion) >= Sensor.MAX_PACKET and len(conversion_list) >= 1: # skip attribute
+                                continue
                             conversion_size += struct.calcsize(conversion)
                             conversion_list.append([attr[1:], conversion])
                     break

@@ -30,7 +30,7 @@ class MsgTransmitter(Node):
         latching_qos = QoSProfile(depth=5, # QOS profile that queues message for subscriber
             durability=QoSDurabilityPolicy.RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL)
         self.tx_pub = self.create_publisher(Packet, "transmit", latching_qos)
-        self.create_subscription(Packet, "received", self.listen_incoming, latching_qos)
+        self.create_subscription(Packet, "received", self.listen_incoming, 10)
         self.create_subscription(String, "sensor_descriptions", self._generate_callback, latching_qos)
         self._subs = []
         self.active_codes = []
@@ -126,7 +126,8 @@ class MsgTransmitter(Node):
                     tx_msg.is_broadcast = False
                     self.tx_pub.publish(tx_msg)
                 else:
-                    self.get_logger().warn("Trying to publish on a sensor that has not yet been acknowledged.")
+                    pass
+                    # self.get_logger().warn("Trying to publish on a sensor that has not yet been acknowledged.")
         else:
             def callback(msg):
                 '''
@@ -161,7 +162,7 @@ class MsgTransmitter(Node):
         self._subs.append(self.create_subscription(locate(msg_type), topic, callback, 1))
 
     def listen_incoming(self, rx_msg):
-        # self.get_logger().info(f"received message {rx_msg.data[0]}")
+        self.get_logger().info(f"received message {rx_msg.data}")
         if rx_msg.data[0] == b'0':
             # receiving an ack to a sensor
             good_sensor_code = struct.unpack('B', rx_msg.data[1])[0]

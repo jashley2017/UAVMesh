@@ -46,7 +46,7 @@ class XBeeRadio(Node):
     
     def tx_callback(self, msg):
         ''' ROS: callback for data wanting to be transmitted by the XBee radio '''
-        self.get_logger().info(f"Transmitting: {msg.data}")
+        # self.get_logger().info(f"Transmitting: {msg.data}")
         dev_addr = XBee64BitAddress.from_hex_string(msg.dev_addr)
         self.device.send_data_async_64(dev_addr, bytearray(struct.pack(str(len(msg.data)) + 'c', *msg.data)))
 
@@ -54,7 +54,7 @@ class XBeeRadio(Node):
         ''' XBEE: callback for data received by the XBee radio '''
         data = list(struct.unpack(str(len(msg.data)) + 'c', msg.data))
         dev_addr = str(msg.remote_device.get_64bit_addr())
-        self.get_logger().info(f"Received: {data} from {dev_addr} at time: {msg.timestamp}")
+        # self.get_logger().info(f"Received: {data} from {dev_addr} at time: {msg.timestamp}")
         packet = Packet()
         packet.data = data
         packet.dev_addr = dev_addr

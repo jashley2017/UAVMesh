@@ -58,7 +58,6 @@ class Gps(Sensor):
             callback=self.timepulse_callback, bouncetime=50)
 
     def timepulse_callback(self, channel):
-        self.get_logger().info(f"{time.time()} Timepulse trigger")
         gps_msg = NavSatFix()
         timeref_msg = TimeReference()
         msg_hdr = Header()
@@ -98,7 +97,6 @@ class Gps(Sensor):
                 self.fix_pub.publish(gps_msg)
                 self.time_pub.publish(timeref_msg)
 
-                self.get_logger().info(f"Publishing gps message: ({timeref_msg.header.stamp.sec}.{timeref_msg.header.stamp.nanosec}): ({gps_msg.latitude}, {gps_msg.longitude}, {gps_msg.altitude})")
                 return
             else:
                 self.get_logger().info(f"Other GPS MSG: {(ubx.msg_cls + ubx.msg_id)}")

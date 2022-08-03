@@ -25,7 +25,7 @@ UldaqPublisher::UldaqPublisher(const rclcpp::NodeOptions& options)
   declare_parameter<int>("rate", 100);
   auto parameters_client = std::make_shared<rclcpp::SyncParametersClient>(this);
 
-  int num_chan = parameters_client->get_parameter<int>("chan_num"); // wtf why arent these the same? I am an asshole jeez...
+  int num_chan = parameters_client->get_parameter<int>("chan_num"); 
   int volt_range = parameters_client->get_parameter<int>("v_range");
   int daq_rate = parameters_client->get_parameter<int>("rate");
 
@@ -37,7 +37,6 @@ UldaqPublisher::UldaqPublisher(const rclcpp::NodeOptions& options)
   DaqDeviceDescriptor devDescriptors[MAX_DEV_COUNT];
   DaqDeviceInterface interfaceType = ANY_IFC;
   DaqDeviceDescriptor DeviceDescriptor;
-  DaqDeviceHandle deviceHandle;
   unsigned int numDevs = MAX_DEV_COUNT;
   UlError detectError = ERR_NO_ERROR;
 
@@ -81,11 +80,10 @@ UldaqPublisher::UldaqPublisher(const rclcpp::NodeOptions& options)
 
   // setup scan event for the DAQ
   long event_on_samples = samplesPerChan/20; // trigger event every 0.5 seconds.
-  DaqEventType scan_event = (DE_ON_DATA_AVAILABLE);
+  scan_event = (DE_ON_DATA_AVAILABLE);
   ScanEventParameters user_data;
   user_data.buffer = buffer;
   user_data.buffer_size = numBufferPoints; 
-  cout << numBufferPoints;
   user_data.lowChan = LowChan;
   user_data.highChan = HighChan;
   user_data.node = this;
@@ -108,12 +106,9 @@ UldaqPublisher::UldaqPublisher(const rclcpp::NodeOptions& options)
 
 UldaqPublisher::~UldaqPublisher(){
   // wrap up daq
-  std::cout << "WHOOPS" << endl;
-  /*
   ulAInScanStop(deviceHandle);
   ulDisableEvent(deviceHandle, scan_event);
   ulDisconnectDaqDevice(deviceHandle);
-  */
 }
 Range UldaqPublisher::getGain(int vRange) {
   Range gain;
@@ -152,7 +147,6 @@ void UldaqPublisher::daqEventHandle(DaqDeviceHandle daqDeviceHandle, DaqEventTyp
 }
 void UldaqPublisher::_daqEventHandle(DaqDeviceHandle daqDeviceHandle, DaqEventType eventType, unsigned long long eventData, void* userData)
 {
-  std::cout << eventData <<endl;
   // ROS2 Messages, msg.data is a std::vector
   auto recent_measurement = uldaq_msgs::msg::Measurement();
   auto full_buffer = uldaq_msgs::msg::Buffer();
@@ -177,38 +171,31 @@ void UldaqPublisher::_daqEventHandle(DaqDeviceHandle daqDeviceHandle, DaqEventTy
 
   int chan_count = scanEventParameters->highChan - scanEventParameters->lowChan + 1; 
   unsigned long long total_samples = eventData*chan_count; 
-  long number_of_samples; 
+  // long number_of_samples; 
   double *current_doubles = (double *)malloc(chan_count*sizeof(double)); // most recent reading
 
   if (eventType == DE_ON_DATA_AVAILABLE) {
     unsigned long sample_index = total_samples % scanEventParameters->buffer_size;
-    // TODO: the following copy lines are a lot to unpack and may not be correct
     // essentially, using std::copy and std::memcpy we are trying to replicate this behavior:
     // 1. take the byte buffer and find the start and end index for our current samples
     // 2. using the start and end index copy the current samples into a std::vector<byte> full_buffer
     // 3. take the last current sample and store it into std::vector<double> recent_measurement
     // std::copy(starting_memaddress, ending_memaddress, destination_iterator);
     // std:memcpy(dest_pointer, src_pointer, count)
+    //
     if (sample_index < past_scan) { // buffer wrap around
-      // copy the current valid buffer range to our message
-      number_of_samples = scanEventParameters->buffer_size - past_scan; // go to the end of the buffer
-      std::copy(&(scanEventParameters->buffer[past_scan]), &(scanEventParameters->buffer[past_scan+sizeof(double)*(number_of_samples-1)]), std::back_inserter(full_buffer.data)); 
-      number_of_samples = sample_index;
-      std::copy(&(scanEventParameters->buffer[0]), &(scanEventParameters->buffer[past_scan+sizeof(double)*(number_of_samples-1)]), std::back_inserter(full_buffer.data));  // back_inserter is an iterator of push_back
-      // convert the most recent reading to its double form
-      memcpy(current_doubles, &(scanEventParameters->buffer[past_scan+sizeof(double)*(number_of_samples-1) - sizeof(double)*chan_count]), sizeof(double)*chan_count);
-      for(int i = 0; i < chan_count; i++) {
-        recent_measurement.data[i] = current_doubles[i];
-      }
-    } else { // normal operation
-      number_of_samples = sample_index - past_scan;
-      // copy the current valid buffer range to our message
-      std::copy(&(scanEventParameters->buffer[past_scan]), &(scanEventParameters->buffer[past_scan+sizeof(double)*(number_of_samples-1)]), std::back_inserter(full_buffer.data));
-      // convert the most recent reading to its double form
-      memcpy(current_doubles, &(scanEventParameters->buffer[past_scan+sizeof(double)*(number_of_samples-1) - sizeof(double)*chan_count]), sizeof(double)*chan_count);
-      for(int i = 0; i < chan_count; i++) {
-        recent_measurement.data[i] = current_doubles[i];
-      }
+	    std::copy(&(scanEventParameters->buffer[past_scan]), &(scanEventParameters->buffer[scanEventParameters->buffer_size - 1]), 
+			    std::back_inserter(full_buffer.data));
+	    std::copy(&(scanEventParameters->buffer[0]), &(scanEventParameters->buffer[sample_index]), 
+			    std::back_inserter(full_buffer.data));
+    }
+    else { 
+	    std::copy(&(scanEventParameters->buffer[past_scan]), &(scanEventParameters->buffer[sample_index]), 
+			    std::back_inserter(full_buffer.data));
+    }
+    std::copy(&(scanEventParameters->buffer[sample_index - chan_count]), &(scanEventParameters->buffer[sample_index]), current_doubles);
+    for(int i = 0; i < chan_count; i++) {
+      recent_measurement.data[i] = current_doubles[i];
     }
     past_scan = sample_index;
   } else if (eventType == DE_ON_INPUT_SCAN_ERROR) {

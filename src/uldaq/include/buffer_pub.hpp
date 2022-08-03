@@ -25,6 +25,8 @@ class UldaqPublisher : public rclcpp::Node {
     static void daqEventHandle(DaqDeviceHandle daqDeviceHandle, DaqEventType eventType, unsigned long long eventData, void* userData);
     void _daqEventHandle(DaqDeviceHandle daqDeviceHandle, DaqEventType eventType, unsigned long long eventData, void* userData);
     unsigned long past_scan;
+    DaqDeviceHandle deviceHandle;
+    DaqEventType  scan_event;
     rclcpp::Publisher<uldaq_msgs::msg::Buffer>::SharedPtr bufpub;
     rclcpp::Publisher<uldaq_msgs::msg::Measurement>::SharedPtr recpub;
 };

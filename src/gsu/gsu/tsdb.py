@@ -93,21 +93,24 @@ class GroundStation(Node):
             plane_msg = str(struct.pack(str(len(msg.data)) + 'c', *msg.data), encoding='ascii')
             _, plane_hostname = plane_msg.split(',')
             self.plane_names[msg.dev_addr] = plane_hostname
+            if not self.codes.get(msg.dev_addr, None):
+                self.codes[msg.dev_addr] = [None]*255 # 255 max sensor type count
         else: # sensor data
-            # self.get_logger().info(f"Received datapoint: {msg.data}")
             # sensor data
             code = struct.unpack('B', msg.data[0])[0]
             msg_stamp = self._unpack_bytelist(msg.data[1:9], vartype='d')
-            roundtrip_time = ts - msg_stamp
+            roundtrip_time = min([ts - msg_stamp, 0]) # dont let the negatives pollute too hard
 
-            if self.plane_names.get(msg.dev_addr, None) is None:
+            if self.plane_names.get(msg.dev_addr, None) is None: # unknown plane
                 self.unknown_plane(msg.dev_addr)
                 return
-            if self.codes[msg.dev_addr][code] is None:
+            if self.codes[msg.dev_addr][code] is None: # unknown sensor
                 self.unknown_sensor(code, msg.dev_addr)
                 return
 
             topic, msg_type = self.codes[msg.dev_addr][code]
+            # self.get_logger().info(f"Received topic: {topic}")
+            # self.get_logger().info(f"Time recv: {msg_stamp}, {ts}")
             spec = self.specs[msg_type]
             fields = {}
             tags = {"PlaneID": self.plane_names[msg.dev_addr]}
@@ -138,11 +141,11 @@ class GroundStation(Node):
 
     def unknown_sensor(self, code, dev_addr):
         self.get_logger().warn(f"Received unknown sensor code from {self.plane_names.get(dev_addr, 'Unknown plane')}. Asking for retransmit.")
-        data = [b'1', struct.pack('B', int(code))]
+        data = [b'1', b',', struct.pack('B', int(code))]
         self._tx(data, dev_addr)
 
     def sensor_acknowledge(self, code, dev_addr):
-        data = [b'0', struct.pack('B', int(code))]
+        data = [b'0', b',', struct.pack('B', int(code))]
         self._tx(data, dev_addr)
 
     def _tx(self, data, dev_addr):

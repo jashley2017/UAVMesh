@@ -1,9 +1,6 @@
-Template for the Read the Docs tutorial
+UAVMesh: A mesh-networked data acquisition system
 =======================================
 
-This GitHub template includes fictional Python library
-with some basic Sphinx docs.
+This project is a collection of ROS2 packages designed to support the UKY UAV Labs flight campaigns and datalogging efforts.
 
-Read the tutorial here:
-
-https://docs.readthedocs.io/en/stable/tutorial/
+You can view the documentation for this project by going to its readthedocs page `here <https://uavmesh.readthedocs.io/en/latest/>`_.

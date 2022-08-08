@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 import struct
 import socket
+import math
 from pydoc import locate
 import numpy as np
 import rclpy
 import yaml
+import time
 from networked_sensor.networked_sensor import Sensor
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSDurabilityPolicy
@@ -42,7 +44,7 @@ class MsgTransmitter(Node):
         self.rel_ts2 = None
         self.gps_ts1 = None
         self.gps_ts2 = None
-        self.code = 1
+        self.code = 4 # starts past the reserved msgs
         # TODO is it important to get these from a config or is this good enough? for custom messages we could put a flag
         self.gps_ts_types = [Sensor.get_msg_fullpath(NavSatFix)]
         self.send_hostname()
@@ -52,10 +54,14 @@ class MsgTransmitter(Node):
         store the relationship between gps time and local time to the object
         """
         # the time_ref holds the system time
-        self.rel_ts1 = self.rel_ts2
-        self.rel_ts2 = (
+        new_rel_ts = (
             float(time_msg.time_ref.sec) + float(time_msg.time_ref.nanosec) / 1000000000
         )
+        if self.rel_ts2 is not None:
+            if math.isclose(self.rel_ts2, new_rel_ts): 
+                return
+        self.rel_ts1 = self.rel_ts2
+        self.rel_ts2 = new_rel_ts
         # the header hold the timestamp to the UTC value from the GPS
         self.gps_ts1 = self.gps_ts2
         self.gps_ts2 = (
@@ -142,8 +148,7 @@ class MsgTransmitter(Node):
                     tx_msg.is_broadcast = False
                     self.tx_pub.publish(tx_msg)
                 else:
-                    pass
-                    # self.get_logger().warn("Trying to publish on a sensor that has not yet been acknowledged.")
+                    self.send_spec(sensor_code, *self.specs[sensor_code])
         else:
             def callback(msg):
                 '''
@@ -160,6 +165,8 @@ class MsgTransmitter(Node):
                     ts = self.interpolate_utc(
                         sample_time, self.rel_ts1, self.rel_ts2, self.gps_ts1, self.gps_ts2
                     )
+
+                    # self.get_logger().info(f"{time.time()} -> {ts}:\n [{self.rel_ts1}, {self.gps_ts1}]\n [{self.rel_ts2}, {self.gps_ts2}]")
                     msg_data += self._create_bytelist(ts, vartype="d")
 
                     # construct your bytelist from ros msg attributes
@@ -174,19 +181,20 @@ class MsgTransmitter(Node):
                     tx_msg.is_broadcast = False
                     self.tx_pub.publish(tx_msg)
                 else:
-                    self.get_logger().warn("Trying to publish on a sensor that has not yet been acknowledged.")
+                    self.send_spec(sensor_code, *self.specs[sensor_code])
         self._subs.append(self.create_subscription(locate(msg_type), topic, callback, 1))
 
     def listen_incoming(self, rx_msg):
         self.get_logger().info(f"received message {rx_msg.data}")
         if rx_msg.data[0] == b'0':
             # receiving an ack to a sensor
-            good_sensor_code = struct.unpack('B', rx_msg.data[1])[0]
+            msg = str(struct.pack(str(len(rx_msg.data)) + 'c', *rx_msg.data), encoding='ascii')
+            good_sensor_code = int.from_bytes(b''.join(rx_msg.data[2:]), 'big')
             self.active_codes.append(good_sensor_code)
             return
         if rx_msg.data[0] == b'1': # gsu doesnt know sensor
-            msg = str(struct.pack(str(len(msg.data)) + 'c', *rx_msg.data), encoding='ascii')
-            _, sensor_code = msg.split(',')
+            msg = str(struct.pack(str(len(rx_msg.data)) + 'c', *rx_msg.data), encoding='ascii')
+            sensor_code = int.from_bytes(b''.join(rx_msg.data[2:]), 'big')
             self.send_spec(sensor_code, *self.specs[sensor_code])
             return
         if rx_msg.data[0] == b'3': # gsu doesnt know plane

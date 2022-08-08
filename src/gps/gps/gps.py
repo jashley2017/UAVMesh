@@ -26,7 +26,7 @@ class Gps(Sensor):
     OFF = b"\x00\x00\x00\x00\x00\x00"
     PORT = "/dev/ttyACM0"
     BAUDRATE = 9600
-    TIMEOUT = 1
+    TIMEOUT = 0.5
     UBXONLY = False
     def __init__(self):
         super().__init__('gps')
@@ -63,6 +63,7 @@ class Gps(Sensor):
         msg_hdr = Header()
         system_time = self.get_clock().now().to_msg()
         msg_hdr.frame_id = 'base_link' # center of the plane
+
         try:
             ubx = self.ubp.read()
         except IOError:
@@ -70,8 +71,10 @@ class Gps(Sensor):
             self.ubp = GPSReader(self.port, self.baud, 
                     self.TIMEOUT, self.UBXONLY)
             return
+        count = 0
         while ubx:
             if (ubx.msg_cls + ubx.msg_id) == b"\x01\x07": # NAV_PVT
+                count += 1
                 # <UBX(NAV-PVT, iTOW=16:50:32, year=2015, month=10, day=25, hour=16, min=50, second=48, valid=b'\xf0', tAcc=4294967295, nano=0, fixType=0, flags=b'\x00', flags2=b'$', numSV=0, lon=0, lat=0, height=0, hMSL=-17000, hAcc=4294967295, vAcc=4294967295, velN=0, velE=0, velD=0, gSpeed=0, headMot=0, sAcc=20000, headAcc=18000000, pDOP=9999, reserved1=65034815406080, headVeh=0, magDec=0, magAcc=0)>
 
                 msg_hdr.stamp = self._gen_timestamp_from_utc(ubx)
@@ -96,11 +99,9 @@ class Gps(Sensor):
 
                 self.fix_pub.publish(gps_msg)
                 self.time_pub.publish(timeref_msg)
-
-                return
             else:
                 self.get_logger().info(f"Other GPS MSG: {(ubx.msg_cls + ubx.msg_id)}")
-                ubx = self.ubp.read()
+            ubx = self.ubp.read()
 
     def _gen_timestamp_from_utc(self, ubx):
         second = ubx.second

@@ -29,7 +29,7 @@ def main(args):
 
     for outname, temp_name in temp_names.items():
         template = env.get_template(temp_name)
-        with open(outname, 'w+') as outfile:   
+        with open(outname, 'w+') as outfile:
             outfile.write(template.render(
                     camel_name=camel_name,
                     snake_name=snake_name,
@@ -39,11 +39,24 @@ def main(args):
     dest = basedir
     shutil.copytree("node_template/resource", f"{dest}/resource")
     shutil.copytree("node_template/test",f"{dest}/test") 
+    print(f"Here is the start to your launch description, please copy this into \n  src/plane/launch/main.launch.py under the associated description dictionary. \n \
+        '/dev/{args.devname}*': (Node, lambda f: {{ \n \
+                                                 \"package\": \"{snake_name}\", \n \
+                                                 \"namespace\": \"plane\", \n \
+                                                 \"executable\": \"run_{snake_name}\", \n \
+                                                 \"name\": \"{snake_name}\", \n \
+                                                 \"parameters\": [ \n \
+                                                 {{ {snake_name}_port : f }}, \n \
+                                                 {{ {snake_name}_baudrate:  {args.baudrate} }}, \n \
+                                                 ] \n \
+                                                 }}), \ ")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Creates sensor package.')
     parser.add_argument('package_name', type=str, help='name of package in snake case')
     parser.add_argument('--msg_type', required=False, default="TODO", type=str, nargs=1, help='message type for sensor node')
     parser.add_argument('--msg_topic', required=False, default="TODO", type=str, nargs=1, help='message topic for sensor node')
+    parser.add_argument('--devname', required=False, default="DEVNAME", type=str, nargs=1, help='sensor device name')
+    parser.add_argument('--baudrate', required=False, default="BAUDRATE", type=str, nargs=1, help='sensor device baudrate')
     args = parser.parse_args(sys.argv[1:])
     main(args)

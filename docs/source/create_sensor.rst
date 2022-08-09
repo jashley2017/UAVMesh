@@ -6,16 +6,37 @@ In this case, a *'sensor'* is considered a device that we would like to receive 
 that information across the system. This means that the purpose of a sensor node is to be a publisher of 
 that sensor's information.
 
+Finding your USB device
+-----------------------
+Often times these projects require a multitude of sensors being logged simultaneously on the same device. The sensors can be 
+the same or different or a mix of both. Therefore, there needs to be a way to identify and enumerate the sensors as USB devices. 
+Luckily Linux provides a tool called UDEV for exactly this purpose. Unluckily, this does not mean it is a simple process to use 
+UDEV. Before looking for yourself, check to see if the sensor manufacturer or someone online has already made device rules for 
+your sensor. If you need to create your own udev rule, `here is a helpful tutorial <https://opensource.com/article/18/11/udev>`_. 
+On the udevadm info command primarily look for the *idProduct* and *idVendor* attributes.
+
+Once you have discovered the attributes that uniquely identify your device two things need to be done. Firstly, add a symlink 
+command to the end of the rule to specify what your devices would like to be named. For instance *'SYMLINK+="xbee%n"'* will create 
+devices that look like *'/dev/xbee1'*, *'/dev/xbee2'*, etc. Then we need to add the udev rule to devices/66-ftdi.rules. This symlink 
+name will be important later on and will be referred to as DEVNAME (i.e. xbee is the DEVNAME for the prior example).
+
+.. code-block:: bash
+
+  echo $NEW_UDEV_RULE >> devices/66-ftdi.rules
+  sudo cp devices/66-ftdi.rules /etc/udev/rules.d/66-ftdi.rules
+
+
+
 Creating the sensor node.
 -------------------------
 A script has been provided, `create_sensor.sh <https://github.com/jashley2017/UAVMesh/create_sensor.sh>`_, 
-that will automatically populate a sensor node from a template. Here is an example of its usage in creating a 
-sensor called *'sonic_anemometer'*.
+that will automatically populate a sensor node from a template. 
+Here is an example of its usage in creating a sensor called *'sonic_anemometer'*.
 
 .. code-block:: bash
   :caption: Create sensor script
 
-  ./create_sensor.sh sonic_anemometer
+  ./create_sensor.sh sonic_anemometer $DEVNAME $BAUDRATE
 
 This will create the following heirarchy we can now work in.
 
@@ -37,6 +58,20 @@ package.xml
   This is where licensing information and package dependency lives. If your sensor uses other packages or python libraries they should be specified here as an 'exec_depend'.
 setup.py 
   This file tells the ROS2 package manager where your source files are and how to build them. Likely no changes need to be made to this file, but take not of the name of your executable (you can change it).
+
+For simplicity of the guide, the templater creates a package that assumes you will be connecting a serial device using pyserial since this is the most 
+common case. If this is not how you need to interface with your device you can adjust the sensor node later on 
+or create one entirely custom following `this guide <https://docs.ros.org/en/foxy/Tutorials/Beginner-Client-Libraries/Writing-A-Simple-Py-Publisher-And-Subscriber.html>`_
+for creating a node in ROS2. Just take notice of the differences between their code and the template code.
+
+Creating a launch specification
+-------------------------------
+
+Upon completion of the create_sensor script running, it will output the start of the node description for your launch file. A launch file tells the system how what 
+nodes to launch at runtime with what parameters. Details about the launch files and node descriptions can be found in the `ROS2 Documentation <https://docs.ros.org/en/foxy/Tutorials/Intermediate/Launch/Creating-Launch-Files.html>`_.
+
+This output needs to go into the sensor_descriptions dictionary in the planes' launchfile (src/plane/launch/main.launch.py ~line 47) which will enable the plane to know how to recognize that sensor. If you want your sensor node to 
+have any additional parameters besides baudrate and port you will need to add them to the parameters list here.
 
 Writing your sensor node script
 -------------------------------
@@ -147,26 +182,4 @@ Finally, this part is where you will be adding the most code. Here the program n
 coming from the sensor and form it into your chosen ROS2 message. The process is fairly simple and usually involves spliting 
 the string and assigning each component to an attribute of your message object, then publishing. Don't forget to correctly 
 type each attribute though!
-
-Finding your USB device
------------------------
-Often times these projects require a multitude of sensors being logged simultaneously on the same device. The sensors can be 
-the same or different or a mix of both. Therefore, there needs to be a way to identify and enumerate the sensors as USB devices. 
-Luckily Linux provides a tool called UDEV for exactly this purpose. Unluckily, this does not mean it is a simple process to use 
-UDEV. Before looking for yourself, check to see if the sensor manufacturer or someone online has already made device rules for 
-your sensor. If you need to create your own udev rule, `here is a helpful tutorial <https://opensource.com/article/18/11/udev>`_. 
-On the udevadm info command primarily look for the *idProduct* and *idVendor* attributes.
-
-Once you have discovered the attributes that uniquely identify your device two things need to be done. Firstly, add a symlink 
-command to the end of the rule to specify what your devices would like to be named. For instance *'SYMLINK+="xbee%n"'* will create 
-devices that look like *'/dev/xbee1'*, *'/dev/xbee2'*, etc. Then we need to add the udev rule to devices/66-ftdi.rules.
-
-.. code-block:: bash
-
-  echo $NEW_UDEV_RULE >> devices/66-ftdi.rules
-  sudo cp devices/66-ftdi.rules /etc/udev/rules.d/66-ftdi.rules
-
-Creating a launch specification
--------------------------------
-
 

@@ -18,6 +18,15 @@ sensors it can detect on startup. Please use the
 `Raspberry Pi Image Utility <https://www.raspberrypi.com/news/raspberry-pi-imager-imaging-utility/>`_ 
 to flash the custom OS.
 
+Tools for Developers
+--------------------
+
+The UAVMesh OS is the Ubuntu 20.04 server command line environment. It is set up to be accessable through SSH 
+or direct interface with a keyboard and monitor. Additionally, the ground station version of the OS host's its 
+own wifi network (u: groundstation, p: piplane2021) which the groundstation is then accessable to SSH into from 
+192.168.4.2 (u: ubuntu, p:piplane2021).
+
+
 Commands for Developers
 ----------------------
 

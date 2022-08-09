@@ -10,6 +10,7 @@ from networked_sensor.networked_sensor import Sensor
 from xbee_interfaces.msg import Packet
 
 class GroundStation(Node):
+    tag_fields = ["serial"] # fields in data that indicate a category of data (i.e. serial number)
     def __init__(self):
         super().__init__('groundstation')
         self._subscription = self.create_subscription(
@@ -99,7 +100,7 @@ class GroundStation(Node):
             # sensor data
             code = struct.unpack('B', msg.data[0])[0]
             msg_stamp = self._unpack_bytelist(msg.data[1:9], vartype='d')
-            roundtrip_time = min([ts - msg_stamp, 0]) # dont let the negatives pollute too hard
+            roundtrip_time = max([ts - msg_stamp, 0.]) # dont let the negatives pollute too hard
 
             if self.plane_names.get(msg.dev_addr, None) is None: # unknown plane
                 self.unknown_plane(msg.dev_addr)
@@ -117,11 +118,15 @@ class GroundStation(Node):
             byte_index = 9
             for field, field_type in spec:
                 unpacked = self._unpack_bytelist(msg.data[byte_index: byte_index+struct.calcsize(field_type)], vartype=field_type)
+                if field in self.tag_fields: # this does not allow for a tag to be enumerated
+                    category = tags
+                else:
+                    category = fields
                 if isinstance(unpacked, tuple):
                     for i, subfield in enumerate(unpacked):
-                        fields[field + str(i)] = subfield
+                        category[field + str(i)] = subfield
                 else:
-                    fields[field] = unpacked
+                    category[field] = unpacked
                 byte_index += struct.calcsize(field_type)
             fields["timelag"] = roundtrip_time
             samples =  [{
